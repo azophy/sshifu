@@ -3,7 +3,9 @@ package main
 import (
 	"embed"
 	"html/template"
+	"log"
 	"net/http"
+	"os"
 )
 
 //go:embed templates/* static/*
@@ -26,6 +28,11 @@ func render(w http.ResponseWriter, name string, data PageData) {
 }
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	static := http.FileServer(http.FS(files))
 	http.Handle("/static/", static)
 
@@ -37,5 +44,6 @@ func main() {
 		render(w, "about.html", PageData{Title: "About"})
 	})
 
-	http.ListenAndServe(":8080", nil)
+	log.Printf("Server starting on http://localhost:%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
