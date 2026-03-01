@@ -9,14 +9,17 @@ import (
 //go:embed templates/* static/*
 var files embed.FS
 
-var tmpl = template.Must(template.ParseFS(files, "templates/*.html"))
-
 type PageData struct {
 	Title   string
 	Message string
 }
 
 func render(w http.ResponseWriter, name string, data PageData) {
+	tmpl, err := template.ParseFS(files, "templates/layout.html", "templates/"+name)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
