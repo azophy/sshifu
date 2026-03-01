@@ -28,7 +28,7 @@ func render(w http.ResponseWriter, name string, data PageData) {
 }
 
 func main() {
-	port := os.Getenv("PORT")
+	port := os.Getenv("APP_PORT")
 	if port == "" {
 		port = "8080"
 	}

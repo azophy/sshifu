@@ -40,7 +40,7 @@ go build -o myapp
 ### Configure port
 
 ```bash
-PORT=3000 ./myapp
+APP_PORT=3000 ./myapp
 ```
 
 Default port is `8080`.
