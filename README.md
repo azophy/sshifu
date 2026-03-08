@@ -1,0 +1,255 @@
+# Sshifu
+
+![Sshifu Logo](logo.png)
+
+**Sshifu** (SSH + Fu / 師傅 "master") is a lightweight SSH authentication system that uses short-lived OpenSSH certificates with OAuth authentication (GitHub organizations).
+
+A minimal alternative to complex SSH access platforms like Teleport, while remaining fully compatible with existing OpenSSH tooling.
+
+## Features
+
+- 🔐 **Short-lived SSH certificates** - Automatic certificate issuance with configurable TTL (default 8 hours)
+- 🌐 **GitHub OAuth authentication** - Authenticate users via GitHub organization membership
+- 🛠️ **Standard OpenSSH compatibility** - Works with existing `ssh` command without workflow changes
+- 📦 **Minimal infrastructure** - Single server component, no database required
+- 👥 **Designed for small teams** - Optimized for teams with <50 users
+
+## Architecture
+
+```
+┌─────────────┐
+│ User CLI    │  sshifu
+│ (sshifu)    │
+└──────┬──────┘
+       │
+       │ 1. Start login session
+       │ 2. Poll for approval
+       │ 3. Request certificate
+       ▼
+┌─────────────────────────┐
+│ sshifu-server           │
+│ - OAuth gateway         │
+│ - SSH Certificate Auth  │
+└─────────────────────────┘
+       │
+       │ Configure trust
+       ▼
+┌─────────────────────────┐
+│ Target SSH Server       │
+│ (configured via         │
+│  sshifu-trust)          │
+└─────────────────────────┘
+```
+
+## Components
+
+| Tool | Purpose |
+|------|---------|
+| `sshifu` | CLI used by users to authenticate and connect to SSH servers |
+| `sshifu-server` | Web server acting as OAuth gateway and SSH Certificate Authority |
+| `sshifu-trust` | Server-side CLI to configure SSH servers to trust the Sshifu CA |
+
+## Quick Start
+
+### Prerequisites
+
+- Go 1.25+
+- GitHub organization (for OAuth)
+- SSH servers running OpenSSH
+
+### 1. Build
+
+```bash
+go build ./cmd/sshifu
+go build ./cmd/sshifu-server
+go build ./cmd/sshifu-trust
+```
+
+### 2. Configure sshifu-server
+
+Copy the example configuration:
+
+```bash
+cp config.example.yml config.yml
+```
+
+Edit `config.yml` with your values:
+
+```yaml
+server:
+  listen: ":8080"
+  public_url: https://auth.example.com
+
+ca:
+  private_key: ./ca
+  public_key: ./ca.pub
+
+cert:
+  ttl: 8h
+  extensions:
+    permit-pty: true
+    permit-port-forwarding: true
+    permit-agent-forwarding: true
+    permit-x11-forwarding: true
+
+auth:
+  providers:
+    - name: github
+      type: github
+      client_id: YOUR_GITHUB_CLIENT_ID
+      client_secret: YOUR_GITHUB_CLIENT_SECRET
+      allowed_org: your-github-org
+```
+
+### 3. Run sshifu-server
+
+```bash
+./sshifu-server
+```
+
+The server will generate CA keys on first run if they don't exist.
+
+### 4. Configure SSH Servers
+
+On each target SSH server, run:
+
+```bash
+sudo ./sshifu-trust https://auth.example.com
+```
+
+This will:
+- Download and install the CA public key
+- Request and install a host certificate
+- Update `sshd_config` to trust the CA
+- Restart the SSH daemon
+
+### 5. Connect via sshifu
+
+```bash
+./sshifu auth.example.com user@target-server.com
+```
+
+The first time you run this:
+1. A login URL will be displayed
+2. Open the URL in your browser and authenticate via GitHub
+3. The CLI will automatically detect approval and obtain a certificate
+4. SSH connection will be established
+
+Subsequent runs will reuse the certificate until it expires.
+
+## Authentication Flow
+
+```
+┌──────────┐                    ┌───────────────┐                    ┌──────────┐
+│  sshifu  │                    │ sshifu-server │                    │  GitHub  │
+└────┬─────┘                    └───────┬───────┘                    └────┬─────┘
+     │                                  │                                  │
+     │  POST /api/v1/login/start        │                                  │
+     │─────────────────────────────────>│                                  │
+     │                                  │                                  │
+     │  session_id, login_url           │                                  │
+     │<─────────────────────────────────│                                  │
+     │                                  │                                  │
+     │  [Display login URL to user]     │                                  │
+     │                                  │                                  │
+     │                                  │  [User opens URL in browser]     │
+     │                                  │                                  │
+     │                                  │  Redirect to GitHub OAuth        │
+     │                                  │─────────────────────────────────>│
+     │                                  │                                  │
+     │                                  │  User authenticates              │
+     │                                  │<─────────────────────────────────│
+     │                                  │                                  │
+     │                                  │  Verify org membership           │
+     │                                  │─────────────────────────────────>│
+     │                                  │                                  │
+     │  GET /api/v1/login/status        │  Session approved                │
+     │─────────────────────────────────>│                                  │
+     │                                  │                                  │
+     │  status: approved, access_token  │                                  │
+     │<─────────────────────────────────│                                  │
+     │                                  │                                  │
+     │  POST /api/v1/sign/user          │                                  │
+     │─────────────────────────────────>│                                  │
+     │                                  │                                  │
+     │  SSH certificate                 │                                  │
+     │<─────────────────────────────────│                                  │
+     │                                  │                                  │
+     │  ssh -o CertificateFile=<cert>   │                                  │
+     │─────────────────────────────────>│                                  │
+     │         [SSH connection established]                                  │
+```
+
+## Configuration
+
+### Server Configuration
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| `server.listen` | Address to listen on | `:8080` |
+| `server.public_url` | Public URL of the server | Required |
+| `ca.private_key` | Path to CA private key | `./ca` |
+| `ca.public_key` | Path to CA public key | `./ca.pub` |
+| `cert.ttl` | Certificate time-to-live | `8h` |
+| `auth.providers` | OAuth provider configurations | Required |
+
+### Certificate Extensions
+
+By default, issued certificates include:
+- `permit-pty` - Allow pseudo-terminal allocation
+- `permit-port-forwarding` - Allow TCP port forwarding
+- `permit-agent-forwarding` - Allow SSH agent forwarding
+- `permit-x11-forwarding` - Allow X11 forwarding
+
+## Project Structure
+
+```
+sshifu/
+├── cmd/
+│   ├── sshifu/          # User CLI
+│   ├── sshifu-server/   # Server component
+│   └── sshifu-trust/    # Server setup tool
+├── internal/
+│   ├── api/             # HTTP API handlers
+│   ├── cert/            # SSH certificate operations
+│   ├── config/          # Configuration loading
+│   ├── oauth/           # OAuth provider implementations
+│   ├── session/         # Login session management
+│   └── ssh/             # SSH utilities
+├── web/                 # Web frontend (login pages)
+├── config.example.yml   # Example configuration
+└── go.mod
+```
+
+## Security Considerations
+
+- **Short-lived certificates** reduce the impact of compromised keys
+- **CA private key** should be stored securely on the server
+- **GitHub organization membership** is verified on each login
+- **No long-term secrets** stored on client machines
+- **Transparent authorization** - the target server's OS determines final access permissions
+
+## Limitations (v1)
+
+The following features are intentionally out of scope for the initial release:
+
+- Role-based access control (RBAC)
+- Server access policies
+- Automatic account provisioning on SSH servers
+- Session recording or audit logging
+- Admin dashboard
+- Certificate revocation
+
+## Requirements
+
+- Go 1.25+
+- Linux/Unix-like operating system
+- OpenSSH 6.7+ (for certificate support)
+
+## License
+
+[MIT License](LICENSE)
+
+## Contributing
+
+Contributions are welcome! Please read the contributing guidelines before submitting pull requests.
