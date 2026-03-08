@@ -111,3 +111,8 @@ func fileExists(path string) bool {
 	}
 	return !info.IsDir()
 }
+
+// MarshalAuthorizedKey marshals a public key to authorized_keys format
+func MarshalAuthorizedKey(key ssh.PublicKey) []byte {
+	return ssh.MarshalAuthorizedKey(key)
+}
