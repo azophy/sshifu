@@ -214,9 +214,63 @@ The login session system was already implemented in Milestone 1 (`internal/sessi
 
 ---
 
+### Milestone 6 — Server API ✅
+
+**Status:** Complete
+**Date:** March 8, 2026
+
+**What was done:**
+
+1. **Implemented certificate signing handlers** (`internal/api/handlers.go`)
+   - `SignUserCertificate` - POST `/api/v1/sign/user` - signs user SSH certificates
+     - Validates access token against approved sessions
+     - Extracts username from session for certificate principal
+     - Parses user public key and signs with CA
+     - Returns signed certificate in OpenSSH format
+   - `SignHostCertificate` - POST `/api/v1/sign/host` - signs host SSH certificates
+     - Validates host public key and principals
+     - Signs host certificate with CA
+     - Returns signed certificate for SSH server
+
+2. **Added API types** (`internal/api/response.go`)
+   - `HostSignRequest` - request type for host certificate signing
+   - `SignResponse` - response type for certificate signing endpoints
+
+3. **Updated Handler struct** (`internal/api/handlers.go`)
+   - Added `caSigner` field for SSH CA signer
+   - Added `config` field for certificate configuration (TTL, extensions)
+   - Updated `NewHandler()` to accept CA signer and config
+
+4. **Enhanced session store** (`internal/session/session.go`)
+   - Added `Range()` method for iterating over sessions
+   - Enables token-based session lookup for certificate signing
+
+5. **Extended CA struct** (`internal/cert/ca.go`)
+   - Added `Signer()` method to expose underlying ssh.Signer
+
+6. **Updated sshifu-server** (`cmd/sshifu-server/main.go`)
+   - Loads CA private key on startup
+   - Initializes handler with CA signer and certificate config
+   - Displays "CA loaded successfully" on startup
+
+7. **Added comprehensive unit tests** (`internal/api/handlers_test.go`)
+   - `TestSignUserCertificate` - successful user certificate signing
+   - `TestSignUserCertificateInvalidToken` - rejects invalid access tokens
+   - `TestSignUserCertificateMissingFields` - validates required fields
+   - `TestSignHostCertificate` - successful host certificate signing
+   - `TestSignHostCertificateMissingFields` - validates required fields
+   - `TestSignHostCertificateWrongMethod` - HTTP method validation
+
+**Verification:**
+- ✅ All 6 new unit tests pass
+- ✅ Total test count: 43 tests across all packages
+- ✅ Build succeeds with no errors
+- ✅ Certificate signing produces valid OpenSSH certificates
+
+---
+
 ## Pending Milestones
 
-### Milestone 6 — Server API
 ### Milestone 7 — CLI Implementation
 ### Milestone 8 — Server Tool
 ### Milestone 9 — End-to-End Testing
