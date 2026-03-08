@@ -366,10 +366,10 @@ func execSSH(config *Config, certPath string) error {
 // joinURL joins a base URL with a path
 func joinURL(base, path string) string {
 	u, err := url.Parse(base)
-	if err != nil {
-		// If base is not a valid URL, assume it's a hostname
+	if err != nil || u.Scheme == "" {
+		// If base is not a valid URL or has no scheme, assume it's a hostname
 		u = &url.URL{
-			Scheme: "http",
+			Scheme: "https",
 			Host:   base,
 		}
 	}

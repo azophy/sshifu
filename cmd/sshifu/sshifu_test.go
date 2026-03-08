@@ -83,7 +83,7 @@ func TestJoinURL(t *testing.T) {
 			name: "hostname only",
 			base: "auth.example.com",
 			path: "/api/v1/login/start",
-			want: "/api/v1/login/start", // Without scheme, url.Parse treats it as path
+			want: "https://auth.example.com/api/v1/login/start",
 		},
 		{
 			name: "with https scheme",
