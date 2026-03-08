@@ -35,7 +35,8 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: sshifu <sshifu-server> [ssh arguments]\n")
 		fmt.Fprintf(os.Stderr, "\nExample:\n")
-		fmt.Fprintf(os.Stderr, "  sshifu auth.example.com target-server.com\n")
+		fmt.Fprintf(os.Stderr, "  sshifu auth.example.com                    # Connect to auth.example.com\n")
+		fmt.Fprintf(os.Stderr, "  sshifu auth.example.com target-server.com  # Connect to target-server.com\n")
 		fmt.Fprintf(os.Stderr, "  sshifu auth.example.com -i ~/.ssh/my_key target-server.com\n")
 		os.Exit(1)
 	}
@@ -77,6 +78,11 @@ func parseArgs(args []string) (*Config, error) {
 		} else {
 			sshArgs = append(sshArgs, arg)
 		}
+	}
+
+	// If no SSH arguments provided, use server URL as the target
+	if len(sshArgs) == 0 {
+		sshArgs = []string{config.ServerURL}
 	}
 
 	config.SSHArgs = sshArgs
