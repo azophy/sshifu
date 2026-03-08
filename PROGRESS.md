@@ -88,9 +88,48 @@
 
 ---
 
+### Milestone 3 — SSH Certificate Authority ✅
+
+**Status:** Complete
+**Date:** March 8, 2026
+
+**What was done:**
+
+1. **Created user certificate signing** (`internal/cert/user_cert.go`)
+   - `SignUserKey()` function for signing user SSH certificates
+   - Supports configurable TTL (time-to-live)
+   - Supports certificate extensions (permit-pty, permit-port-forwarding, etc.)
+   - Applies sensible defaults when no extensions specified
+
+2. **Created host certificate signing** (`internal/cert/host_cert.go`)
+   - `SignHostKey()` function for signing host SSH certificates
+   - Supports multiple principals (hostnames/IPs)
+   - Configurable TTL for host certificates
+
+3. **Refactored CA struct** (`internal/cert/ca.go`)
+   - Updated `CA.SignUserKey()` to delegate to standalone `SignUserKey()`
+   - Updated `CA.SignHostKey()` to delegate to standalone `SignHostKey()`
+   - Maintains backward-compatible API for CA struct users
+
+4. **Added comprehensive unit tests** (`internal/cert/cert_test.go`)
+   - `TestGenerateCA` - CA keypair generation
+   - `TestLoadCAInvalidKey` - Error handling for invalid keys
+   - `TestLoadCANonexistentKey` - Error handling for missing files
+   - `TestSignUserKey` - User certificate signing and verification
+   - `TestSignUserKeyDefaultExtensions` - Default extension application
+   - `TestSignHostKey` - Host certificate signing and verification
+   - `TestSignHostKeyEmptyPrincipals` - Edge case handling
+   - `TestCA_Methods` - CA struct method integration tests
+
+**Verification:**
+- ✅ All 8 unit tests pass
+- ✅ Build succeeds with no errors
+- ✅ Certificate signing works correctly for both user and host certificates
+
+---
+
 ## Pending Milestones
 
-### Milestone 3 — SSH Certificate Authority
 ### Milestone 4 — Login Session System
 ### Milestone 5 — GitHub OAuth Integration
 ### Milestone 6 — Server API

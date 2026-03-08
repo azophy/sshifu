@@ -69,65 +69,14 @@ func GenerateCA(privateKeyPath, publicKeyPath string) error {
 	return nil
 }
 
-// SignUserKey signs a user certificate
+// SignUserKey signs a user certificate using the CA
 func (ca *CA) SignUserKey(userKey ssh.PublicKey, principal string, ttl time.Duration, extensions map[string]bool) ([]byte, error) {
-	cert := &ssh.Certificate{
-		Key:             userKey,
-		CertType:        ssh.UserCert,
-		KeyId:           principal,
-		ValidPrincipals: []string{principal},
-		ValidBefore:     ssh.CertTimeInfinity,
-		ValidAfter:      uint64(time.Now().Unix()),
-	}
-
-	if ttl > 0 {
-		cert.ValidBefore = uint64(time.Now().Add(ttl).Unix())
-	}
-
-	// Set default extensions if not specified
-	if len(extensions) == 0 {
-		extensions = map[string]bool{
-			"permit-pty":             true,
-			"permit-port-forwarding": true,
-		}
-	}
-
-	// Convert map[string]bool to map[string]string
-	certExtensions := make(map[string]string)
-	for k, v := range extensions {
-		if v {
-			certExtensions[k] = ""
-		}
-	}
-	cert.Permissions.Extensions = certExtensions
-
-	if err := cert.SignCert(rand.Reader, ca.signer); err != nil {
-		return nil, fmt.Errorf("failed to sign certificate: %w", err)
-	}
-
-	return ssh.MarshalAuthorizedKey(cert), nil
+	return SignUserKey(ca.signer, userKey, principal, ttl, extensions)
 }
 
-// SignHostKey signs a host certificate
+// SignHostKey signs a host certificate using the CA
 func (ca *CA) SignHostKey(hostKey ssh.PublicKey, principals []string, ttl time.Duration) ([]byte, error) {
-	cert := &ssh.Certificate{
-		Key:             hostKey,
-		CertType:        ssh.HostCert,
-		KeyId:           "host",
-		ValidPrincipals: principals,
-		ValidBefore:     ssh.CertTimeInfinity,
-		ValidAfter:      uint64(time.Now().Unix()),
-	}
-
-	if ttl > 0 {
-		cert.ValidBefore = uint64(time.Now().Add(ttl).Unix())
-	}
-
-	if err := cert.SignCert(rand.Reader, ca.signer); err != nil {
-		return nil, fmt.Errorf("failed to sign host certificate: %w", err)
-	}
-
-	return ssh.MarshalAuthorizedKey(cert), nil
+	return SignHostKey(ca.signer, hostKey, principals, ttl)
 }
 
 // PublicKey returns the CA public key
