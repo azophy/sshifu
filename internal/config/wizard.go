@@ -207,8 +207,11 @@ func GenerateCAKeys(privateKeyPath, publicKeyPath string) error {
 	return nil
 }
 
-// fileExists checks if a file exists
+// fileExists checks if a file exists (not a directory)
 func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }
