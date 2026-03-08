@@ -353,8 +353,86 @@ The login session system was already implemented in Milestone 1 (`internal/sessi
 
 ---
 
+### Milestone 8 — Server Tool (`sshifu-trust`) ✅
+
+**Status:** Complete
+**Date:** March 8, 2026
+
+**What was done:**
+
+1. **Implemented complete sshifu-trust CLI workflow** (`cmd/sshifu-trust/main.go`)
+   - `main()` - entry point with usage display
+   - `run()` - orchestrates the complete server configuration workflow
+   - 7-step configuration process with progress output
+
+2. **Implemented server URL normalization**
+   - `normalizeServerURL()` - converts server argument to proper HTTP URL
+   - Auto-prefixes `https://` if no scheme provided
+   - Validates URL format and removes trailing slashes
+
+3. **Implemented CA public key download**
+   - `downloadCAPublicKey()` - GET `/api/v1/ca/pub`
+   - Parses JSON response and extracts public key
+
+4. **Implemented CA key installation**
+   - `installCAKey()` - writes CA key to `/etc/ssh/sshifu_ca.pub`
+   - Creates `/etc/ssh` directory if needed
+   - Sets proper file permissions (0644)
+
+5. **Implemented host key retrieval**
+   - `readHostPublicKey()` - reads `/etc/ssh/ssh_host_ed25519_key.pub`
+   - Returns trimmed public key string
+
+6. **Implemented host principal detection**
+   - `getHostPrincipals()` - auto-detects hostnames for certificate
+   - Gets primary hostname from OS
+   - Parses `/etc/hosts` for additional hostnames
+   - Includes localhost variants by default
+
+7. **Implemented host certificate request**
+   - `requestHostCertificate()` - POST `/api/v1/sign/host`
+   - Sends host public key and principals
+   - Configurable TTL (default 720h / 30 days)
+   - Receives signed host certificate
+
+8. **Implemented host certificate installation**
+   - `installHostCertificate()` - writes cert to `/etc/ssh/ssh_host_ed25519_key-cert.pub`
+   - Sets proper file permissions (0644)
+
+9. **Implemented sshd_config modification**
+   - `updateSSHDConfig()` - updates `/etc/ssh/sshd_config`
+   - Adds or updates `TrustedUserCAKeys` directive
+   - Adds or updates `HostCertificate` directive
+   - Preserves existing configuration
+
+10. **Implemented SSH daemon restart**
+    - `restartSSHD()` - restarts SSH service
+    - Detects systemd and uses `systemctl restart sshd`
+    - Falls back to `service ssh restart` for non-systemd systems
+
+11. **Added comprehensive unit tests** (`cmd/sshifu-trust/sshifu_trust_test.go`)
+    - `TestNormalizeServerURL` - URL normalization (6 sub-tests)
+    - `TestJoinURL` - URL path joining (4 sub-tests)
+    - `TestIsValidIP` - IP address validation (6 sub-tests)
+    - `TestReadEtcHosts` - /etc/hosts parsing
+    - `TestGetPathConstants` - path constant validation
+    - `TestGetHostKeyPath` - host key path accessor
+    - `TestGetHostCertPath` - host cert path accessor
+    - `TestGetCAInstallPath` - CA install path accessor
+    - `TestGetSSHDConfigPath` - sshd_config path accessor
+    - `TestDetectOS` - OS detection
+    - `TestDefaultCertValidity` - certificate TTL constant
+    - `TestDefaultHTTPTimeout` - HTTP timeout constant
+
+**Verification:**
+- ✅ All 12 new unit tests pass
+- ✅ Total test count: 72 tests across all packages
+- ✅ Build succeeds with no errors
+- ✅ CLI displays proper usage on missing arguments
+
+---
+
 ## Pending Milestones
 
-### Milestone 8 — Server Tool
 ### Milestone 9 — End-to-End Testing
 ### Milestone 10 — Hardening
