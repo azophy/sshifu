@@ -30,32 +30,59 @@ Sshifu is a CLI tool that authenticates you via OAuth (GitHub organizations) and
 
 Before using Sshifu, ensure you have:
 
-1. **Go 1.25+** (for building from source)
-2. **OpenSSH 6.7+** (for certificate support)
-3. **GitHub account** with membership in an authorized organization
-4. **Access to a sshifu-server** instance
+1. **OpenSSH 6.7+** (for certificate support)
+2. **GitHub account** with membership in an authorized organization
+3. **Access to a sshifu-server** instance
 
 ---
 
 ## Installation
 
-### Option 1: Build from Source
+### Option 1: Pre-built Binary (Recommended)
 
+Download the latest release for your platform from the [GitHub releases page](https://github.com/azophy/sshifu/releases):
+
+**Linux (amd64):**
 ```bash
-# Clone the repository
-git clone https://github.com/azophy/sshifu.git
-cd sshifu
-
-# Build the CLI
-go build -o sshifu ./cmd/sshifu
-
-# Move to your PATH (optional)
-mv sshifu /usr/local/bin/
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-linux-amd64.tar.gz | tar xz
+sudo mv sshifu /usr/local/bin/
 ```
 
-### Option 2: Pre-built Binary
+**macOS (Intel):**
+```bash
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-darwin-amd64.tar.gz | tar xz
+sudo mv sshifu /usr/local/bin/
+```
 
-Download the latest release for your platform from the [releases page](https://github.com/azophy/sshifu/releases).
+**macOS (Apple Silicon):**
+```bash
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-darwin-arm64.tar.gz | tar xz
+sudo mv sshifu /usr/local/bin/
+```
+
+**Windows (amd64):**
+```powershell
+# Download and extract
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-windows-amd64.zip -o sshifu.zip
+Expand-Archive sshifu.zip
+# Move sshifu.exe to a directory in your PATH
+```
+
+### Option 2: Build from Source
+
+Requires Go 1.25+:
+
+```bash
+git clone https://github.com/azophy/sshifu.git
+cd sshifu
+go build -o sshifu ./cmd/sshifu
+```
+
+### Verify Installation
+
+```bash
+sshifu --help
+```
 
 ---
 

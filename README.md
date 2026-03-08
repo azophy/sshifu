@@ -55,9 +55,43 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 
 ### Prerequisites
 
-- Go 1.25+
 - GitHub organization (for OAuth)
 - SSH servers running OpenSSH
+
+### Installation
+
+#### Option 1: Pre-built Binary (Recommended)
+
+Download the latest release for your platform from the [releases page](https://github.com/azophy/sshifu/releases):
+
+```bash
+# Linux (amd64)
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-linux-amd64.tar.gz | tar xz
+sudo mv sshifu* /usr/local/bin/
+
+# macOS (Intel)
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-darwin-amd64.tar.gz | tar xz
+sudo mv sshifu* /usr/local/bin/
+
+# macOS (Apple Silicon)
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-darwin-arm64.tar.gz | tar xz
+sudo mv sshifu* /usr/local/bin/
+
+# Windows (amd64)
+curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-windows-amd64.zip -o sshifu.zip
+unzip sshifu.zip
+# Move sshifu.exe to a directory in your PATH
+```
+
+#### Option 2: Build from Source
+
+Requires Go 1.25+:
+
+```bash
+go build ./cmd/sshifu
+go build ./cmd/sshifu-server
+go build ./cmd/sshifu-trust
+```
 
 ### Getting GitHub OAuth Client ID & Secret
 
@@ -263,9 +297,9 @@ The following features are intentionally out of scope for the initial release:
 
 ## Requirements
 
-- Go 1.25+
-- Linux/Unix-like operating system
 - OpenSSH 6.7+ (for certificate support)
+- Linux/Unix-like operating system (server components)
+- Windows, macOS, or Linux (client CLI)
 
 ## License
 
