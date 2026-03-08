@@ -14,6 +14,7 @@ const { execSync } = require('child_process');
 
 const PACKAGE_NAME = 'sshifu';
 const BINARIES = ['sshifu', 'sshifu-server', 'sshifu-trust'];
+const DOWNLOAD_TIMEOUT = 60000; // 60 seconds
 
 // Map npm platform/arch to Go GOOS/GOARCH
 const PLATFORM_MAP = {
@@ -28,14 +29,14 @@ const PLATFORM_MAP = {
 function getPlatformInfo() {
   const npmPlatform = `${process.platform}-${process.arch}`;
   const mapped = PLATFORM_MAP[npmPlatform];
-  
+
   if (!mapped) {
     throw new Error(
       `Unsupported platform: ${npmPlatform}\n` +
       `Supported platforms: ${Object.keys(PLATFORM_MAP).join(', ')}`
     );
   }
-  
+
   return mapped;
 }
 
@@ -60,18 +61,18 @@ function getLatestVersion() {
       path: '/repos/azophy/sshifu/releases/latest',
       method: 'GET',
       headers: {
-        'User-Agent': PACKAGE_NAME,
+        'User-Agent': 'sshifu-npm-installer',
         'Accept': 'application/vnd.github.v3+json',
       },
     };
 
-    https.get(options, (res) => {
+    const req = https.get(options, (res) => {
       let data = '';
-      
+
       res.on('data', (chunk) => {
         data += chunk;
       });
-      
+
       res.on('end', () => {
         if (res.statusCode === 200) {
           try {
@@ -84,28 +85,52 @@ function getLatestVersion() {
           reject(new Error(`GitHub API returned status ${res.statusCode}`));
         }
       });
-    }).on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timed out'));
+    });
   });
 }
 
-function downloadFile(url) {
+function downloadFile(url, totalBytes = 0) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const options = {
+      headers: {
+        'User-Agent': 'sshifu-npm-installer',
+      },
+      timeout: DOWNLOAD_TIMEOUT,
+    };
+
+    https.get(url, options, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         // Follow redirect
-        downloadFile(res.headers.location).then(resolve).catch(reject);
+        downloadFile(res.headers.location, totalBytes).then(resolve).catch(reject);
         return;
       }
-      
+
       if (res.statusCode !== 200) {
         reject(new Error(`Download failed with status ${res.statusCode}`));
         return;
       }
-      
+
       const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-    }).on('error', reject);
+      let downloaded = 0;
+
+      res.on('data', (chunk) => {
+        downloaded += chunk.length;
+        chunks.push(chunk);
+      });
+
+      res.on('end', () => {
+        resolve(Buffer.concat(chunks));
+      });
+    }).on('error', reject)
+      .on('timeout', () => {
+        reject(new Error('Download timed out'));
+      });
   });
 }
 
@@ -157,55 +182,64 @@ function makeExecutable(filePath) {
 async function install() {
   console.log(`🔐 ${PACKAGE_NAME} installer`);
   console.log('========================\n');
-  
+
   const platformInfo = getPlatformInfo();
   const binExt = getBinaryExtension();
-  
+
   console.log(`Platform: ${process.platform}-${process.arch}`);
   console.log(`Mapped to: ${platformInfo.os}-${platformInfo.arch}\n`);
-  
+
   // Determine version
-  const version = process.env.SSHIFU_VERSION || await getLatestVersion();
+  let version;
+  try {
+    version = process.env.SSHIFU_VERSION || await getLatestVersion();
+  } catch (e) {
+    console.error(`Failed to get version: ${e.message}`);
+    console.error('\nFalling back to latest release...');
+    version = 'v0.2.2';
+  }
   console.log(`Version: ${version}`);
-  
+
   // Get download URL
   const downloadUrl = getDownloadUrl(version, platformInfo);
   console.log(`Downloading from: ${downloadUrl}\n`);
-  
+
   // Download archive
   console.log('Downloading archive...');
   let archiveData;
   try {
     archiveData = await downloadFile(downloadUrl);
+    console.log(`Downloaded ${Math.round(archiveData.length / 1024)} KB`);
   } catch (e) {
     console.error(`Failed to download: ${e.message}`);
     console.error('\nMake sure you have a stable internet connection.');
     console.error('If the problem persists, download manually from:');
     console.error('https://github.com/azophy/sshifu/releases\n');
+    console.error('Then extract to: ' + path.join(__dirname, '..', 'bin'));
     process.exit(1);
   }
-  
+
   // Create bin directory
   const binDir = path.join(__dirname, '..', 'bin');
   if (!fs.existsSync(binDir)) {
     fs.mkdirSync(binDir, { recursive: true });
   }
-  
+
   // Create temp directory for extraction
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `${PACKAGE_NAME}-`));
-  
+
   try {
     // Extract archive
     console.log('Extracting binaries...');
     await extractArchive(archiveData, tempDir);
-    
+
     // Move binaries to bin directory
     console.log('Installing binaries...');
     for (const binary of BINARIES) {
       const srcName = binary + binExt;
       const srcPath = path.join(tempDir, srcName);
       const destPath = path.join(binDir, srcName);
-      
+
       if (fs.existsSync(srcPath)) {
         fs.copyFileSync(srcPath, destPath);
         makeExecutable(destPath);
@@ -214,15 +248,16 @@ async function install() {
         console.warn(`  ⚠ ${binary}${binExt} not found in archive`);
       }
     }
-    
+
     console.log('\n✅ Installation complete!');
     console.log(`\nYou can now run:`);
     console.log(`  ${BINARIES.map(b => b + binExt).join(', ')}`);
     console.log(`\nOr use npx:`);
     console.log(`  npx sshifu <server> <target>`);
-    
+
   } catch (e) {
     console.error(`Installation failed: ${e.message}`);
+    console.error('\nStack:', e.stack);
     process.exit(1);
   } finally {
     // Cleanup temp directory
