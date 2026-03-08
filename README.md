@@ -60,7 +60,26 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 
 ### Installation
 
-#### Option 1: Pre-built Binary (Recommended)
+#### Option 1: npm (Recommended)
+
+Install globally using npm:
+
+```bash
+npm install -g sshifu
+```
+
+Run without installation using `npx`:
+
+```bash
+npx sshifu auth.example.com user@target-server.com
+```
+
+The npm package automatically downloads the correct binary for your platform:
+- **Linux**: x64, arm64, arm
+- **macOS**: Intel (x64), Apple Silicon (arm64)
+- **Windows**: x64
+
+#### Option 2: Pre-built Binary
 
 Download the latest release for your platform from the [releases page](https://github.com/azophy/sshifu/releases):
 

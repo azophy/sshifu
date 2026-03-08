@@ -8,6 +8,12 @@
 /sshifu-server
 /sshifu-trust
 
+# npm package binaries (downloaded by postinstall)
+/bin/sshifu
+/bin/sshifu-server
+/bin/sshifu-trust
+/bin/*.exe
+
 # Test binary
 *.test
 
