@@ -16,6 +16,60 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 - 📦 **Minimal infrastructure** - Single server component, no database required
 - 👥 **Designed for small teams** - Optimized for teams with <50 users
 
+## Quick Start
+
+### Prerequisites
+
+- **Publicly accessible address** for the sshifu-server (for testing, you can use [localhost.run](https://localhost.run) to expose your local server)
+- **GitHub OAuth Client ID & Secret** from your GitHub organization
+- **SSH server** with the same username as the GitHub username you want to log in with
+
+### Step 1: Run sshifu-server
+
+```bash
+npx sshifu-server
+```
+
+Follow the interactive prompts to configure:
+- Server listen address (e.g., `:8080`)
+- Public URL (your publicly accessible address)
+- GitHub OAuth Client ID and Secret
+- Allowed GitHub organization
+
+### Step 2: Configure SSH trust
+
+On your target SSH server, run:
+
+```bash
+sudo npx sshifu-trust <sshifu-server-public-url>
+```
+
+Example:
+```bash
+sudo npx sshifu-trust https://your-server.ngrok.io
+```
+
+This configures the SSH server to trust certificates issued by sshifu.
+
+### Step 3: Connect from another machine
+
+From a different machine, connect to your SSH server:
+
+```bash
+npx sshifu <sshifu-server-address> <username>@<target-ssh-server>
+```
+
+Example:
+```bash
+npx sshifu https://your-server.ngrok.io user@target-server.com
+```
+
+The first time you connect:
+1. A login URL will be displayed
+2. Open the URL in your browser and authenticate via GitHub
+3. The CLI will automatically detect approval and obtain a certificate
+4. SSH connection will be established
+
 ## Architecture
 
 ```
@@ -51,32 +105,7 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 | `sshifu-server` | Web server acting as OAuth gateway and SSH Certificate Authority |
 | `sshifu-trust` | Server-side CLI to configure SSH servers to trust the Sshifu CA |
 
-## Quick Start
-
-### Prerequisites
-
-- GitHub organization (for OAuth)
-- SSH servers running OpenSSH
-- Node.js (for `npx`, comes with npm)
-
-### Quick Start (No Installation Required)
-
-Run sshifu commands instantly using `npx` - no installation needed:
-
-```bash
-# Connect to SSH server via sshifu
-npx sshifu auth.example.com user@target-server.com
-
-# Start the sshifu server (OAuth gateway & CA)
-npx sshifu-server
-
-# Configure SSH server to trust sshifu CA (requires sudo)
-sudo npx sshifu-trust auth.example.com
-```
-
-The first time you run any command, npm automatically downloads the correct binary for your platform.
-
-### Installation Options
+## Installation Options
 
 #### Option 1: Install Globally via npm
 
@@ -127,7 +156,7 @@ go build ./cmd/sshifu-server
 go build ./cmd/sshifu-trust
 ```
 
-### Getting GitHub OAuth Client ID & Secret
+## Getting GitHub OAuth Client ID & Secret
 
 To configure OAuth authentication with GitHub, you need to create a GitHub OAuth App:
 
@@ -143,88 +172,6 @@ To configure OAuth authentication with GitHub, you need to create a GitHub OAuth
 7. Click **Generate a new client secret** and copy the secret
 
 > ⚠️ **Important**: The client secret is only shown once. Store it securely and never commit it to version control.
-
-8. Update your `config.yml` with the Client ID and Client Secret
-
-### 1. Build
-
-```bash
-go build ./cmd/sshifu
-go build ./cmd/sshifu-server
-go build ./cmd/sshifu-trust
-```
-
-### 2. Configure sshifu-server
-
-Copy the example configuration:
-
-```bash
-cp config.example.yml config.yml
-```
-
-Edit `config.yml` with your values:
-
-```yaml
-server:
-  listen: ":8080"
-  public_url: https://auth.example.com
-
-ca:
-  private_key: ./ca
-  public_key: ./ca.pub
-
-cert:
-  ttl: 8h
-  extensions:
-    permit-pty: true
-    permit-port-forwarding: true
-    permit-agent-forwarding: true
-    permit-x11-forwarding: true
-
-auth:
-  providers:
-    - name: github
-      type: github
-      client_id: YOUR_GITHUB_CLIENT_ID
-      client_secret: YOUR_GITHUB_CLIENT_SECRET
-      allowed_org: your-github-org
-```
-
-### 3. Run sshifu-server
-
-```bash
-./sshifu-server
-```
-
-The server will generate CA keys on first run if they don't exist.
-
-### 4. Configure SSH Servers
-
-On each target SSH server, run:
-
-```bash
-sudo ./sshifu-trust https://auth.example.com
-```
-
-This will:
-- Download and install the CA public key
-- Request and install a host certificate
-- Update `sshd_config` to trust the CA
-- Restart the SSH daemon
-
-### 5. Connect via sshifu
-
-```bash
-./sshifu auth.example.com user@target-server.com
-```
-
-The first time you run this:
-1. A login URL will be displayed
-2. Open the URL in your browser and authenticate via GitHub
-3. The CLI will automatically detect approval and obtain a certificate
-4. SSH connection will be established
-
-Subsequent runs will reuse the certificate until it expires.
 
 ## Authentication Flow
 
