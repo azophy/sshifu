@@ -40,37 +40,30 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build sshifu
+      - name: Build binaries
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
         run: |
-          go build -o dist/sshifu-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} ./cmd/sshifu
-
-      - name: Build sshifu-server
-        env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
-        run: |
-          go build -o dist/sshifu-server-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} ./cmd/sshifu-server
-
-      - name: Build sshifu-trust
-        env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
-        run: |
-          go build -o dist/sshifu-trust-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} ./cmd/sshifu-trust
+          mkdir -p dist
+          go build -o dist/sshifu${{ matrix.ext }} ./cmd/sshifu
+          go build -o dist/sshifu-server${{ matrix.ext }} ./cmd/sshifu-server
+          go build -o dist/sshifu-trust${{ matrix.ext }} ./cmd/sshifu-trust
 
       - name: Create archive
+        id: archive
         run: |
           cd dist
+          ARCHIVE_NAME="sshifu-${{ matrix.os }}-${{ matrix.arch }}"
           if [ "${{ matrix.os }}" = "windows" ]; then
-            zip -r sshifu-${{ matrix.os }}-${{ matrix.arch }}.zip *.exe
+            7z a -tzip "${ARCHIVE_NAME}.zip" *
+            echo "archive_name=${ARCHIVE_NAME}.zip" >> $GITHUB_OUTPUT
           else
-            tar -czvf sshifu-${{ matrix.os }}-${{ matrix.arch }}.tar.gz *
+            tar -czvf "${ARCHIVE_NAME}.tar.gz" *
+            echo "archive_name=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload release artifact
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/sshifu-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.zip' || '.tar.gz' }}
+          files: dist/${{ steps.archive.outputs.archive_name }}
