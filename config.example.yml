@@ -1,0 +1,34 @@
+# Sshifu Server Configuration
+# Copy this file to config.yml and fill in your values
+
+server:
+  listen: ":8080"
+  public_url: https://auth.example.com
+
+ca:
+  private_key: ./ca
+  public_key: ./ca.pub
+
+cert:
+  ttl: 8h
+  extensions:
+    permit-pty: true
+    permit-port-forwarding: true
+    permit-agent-forwarding: true
+    permit-x11-forwarding: true
+
+auth:
+  providers:
+    - name: github
+      type: github
+      client_id: YOUR_GITHUB_CLIENT_ID
+      client_secret: YOUR_GITHUB_CLIENT_SECRET
+      allowed_org: your-github-org
+
+    # Optional: OIDC provider
+    # - name: oidc
+    #   type: oidc
+    #   issuer: https://example.com
+    #   client_id: YOUR_OIDC_CLIENT_ID
+    #   client_secret: YOUR_OIDC_CLIENT_SECRET
+    #   principal_oauth_field_name: preferred_username

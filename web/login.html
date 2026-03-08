@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sshifu - SSH Authentication</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 420px;
+        }
+        .logo {
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+        h1 {
+            color: #1a1a2e;
+            margin-bottom: 16px;
+            font-size: 28px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+        .btn {
+            display: inline-block;
+            background: #0d1117;
+            color: white;
+            padding: 14px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+        .status {
+            margin-top: 32px;
+            padding: 16px;
+            border-radius: 8px;
+            background: #f6f8fa;
+        }
+        .status.pending {
+            color: #666;
+        }
+        .status.success {
+            color: #22863a;
+            background: #e8f5e9;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top-color: #0d1117;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔐</div>
+        <h1>Sshifu Authentication</h1>
+        <p>Sign in with GitHub to obtain an SSH certificate for secure access.</p>
+        
+        <a href="/oauth/github/{{.SessionID}}" class="btn">
+            Sign in with GitHub
+        </a>
+        
+        <div class="status pending" id="status">
+            <span class="spinner"></span>
+            Waiting for authentication...
+        </div>
+    </div>
+
+    <script>
+        const sessionId = '{{.SessionID}}';
+        
+        async function checkStatus() {
+            try {
+                const response = await fetch(`/api/v1/login/status/${sessionId}`);
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('status');
+                
+                if (data.status === 'approved') {
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '✓ Authentication successful! You can close this window.';
+                } else {
+                    setTimeout(checkStatus, 2000);
+                }
+            } catch (err) {
+                console.error('Status check failed:', err);
+                setTimeout(checkStatus, 2000);
+            }
+        }
+        
+        // Start polling after a delay (give user time to click)
+        setTimeout(checkStatus, 3000);
+    </script>
+</body>
+</html>
