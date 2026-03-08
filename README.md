@@ -1,6 +1,8 @@
 # Sshifu
 
-![Sshifu Logo](logo.png)
+<div align="center">
+  <img src="logo.png" alt="Sshifu Logo" width="250px">
+</div>
 
 **Sshifu** (SSH + Fu / 師傅 "master") is a lightweight SSH authentication system that uses short-lived OpenSSH certificates with OAuth authentication (GitHub organizations).
 
@@ -56,6 +58,25 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 - Go 1.25+
 - GitHub organization (for OAuth)
 - SSH servers running OpenSSH
+
+### Getting GitHub OAuth Client ID & Secret
+
+To configure OAuth authentication with GitHub, you need to create a GitHub OAuth App:
+
+1. Go to your GitHub organization's settings: `https://github.com/organizations/<your-org>/settings`
+2. Navigate to **Developer settings** (left sidebar)
+3. Click **OAuth Apps** → **New OAuth App**
+4. Fill in the application details:
+   - **Application name**: `sshifu` (or any descriptive name)
+   - **Homepage URL**: Your sshifu-server public URL (e.g., `https://auth.example.com`)
+   - **Authorization callback URL**: Same as your sshifu-server public URL (e.g., `https://auth.example.com`)
+5. Click **Register application**
+6. After registration, you'll see your **Client ID** - copy it
+7. Click **Generate a new client secret** and copy the secret
+
+> ⚠️ **Important**: The client secret is only shown once. Store it securely and never commit it to version control.
+
+8. Update your `config.yml` with the Client ID and Client Secret
 
 ### 1. Build
 
