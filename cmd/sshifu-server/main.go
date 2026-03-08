@@ -3,9 +3,15 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/azophy/sshifu/internal/api"
 	"github.com/azophy/sshifu/internal/config"
+	"github.com/azophy/sshifu/internal/oauth"
+	"github.com/azophy/sshifu/internal/session"
 )
 
 const configPath = "config.yml"
@@ -52,12 +58,69 @@ func main() {
 	}
 
 	fmt.Println()
-	fmt.Println("Server starting... (implementation in progress)")
 
-	// TODO: Start HTTP server with API endpoints
-	// This will be implemented in Milestone 6
+	// Initialize session store
+	sessionStore := session.NewStore(15 * time.Minute)
+	fmt.Println("✓ Session store initialized")
 
-	if len(os.Args) > 1 {
-		fmt.Printf("Arguments: %v\n", os.Args[1:])
+	// Find and initialize OAuth provider
+	var oauthProvider oauth.Provider
+	for _, p := range cfg.Auth.Providers {
+		if p.Type == "github" {
+			oauthProvider = oauth.NewGitHubProvider(
+				p.ClientID,
+				p.ClientSecret,
+				cfg.Server.PublicURL+"/oauth/callback",
+				p.AllowedOrg,
+			)
+			fmt.Printf("✓ OAuth provider initialized: %s\n", p.Name)
+			break
+		}
+	}
+
+	if oauthProvider == nil {
+		log.Fatal("No supported OAuth provider configured")
+	}
+
+	// Load CA public key
+	caPubKeyBytes, err := os.ReadFile(cfg.CA.PublicKey)
+	if err != nil {
+		log.Fatalf("Failed to read CA public key: %v", err)
+	}
+	caPubKey := strings.TrimSpace(string(caPubKeyBytes))
+
+	// Initialize API handler
+	handler, err := api.NewHandler(sessionStore, oauthProvider, cfg.Server.PublicURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize API handler: %v", err)
+	}
+
+	// Setup routes
+	mux := http.NewServeMux()
+
+	// API routes
+	mux.HandleFunc("/api/v1/login/start", handler.LoginStart)
+	mux.HandleFunc("/api/v1/login/status/", handler.LoginStatus)
+	mux.HandleFunc("/api/v1/ca/pub", func(w http.ResponseWriter, r *http.Request) {
+		handler.CAPublicKey(w, r, caPubKey)
+	})
+	mux.HandleFunc("/api/v1/sign/user", handler.SignUserCertificate)
+	mux.HandleFunc("/api/v1/sign/host", handler.SignHostCertificate)
+
+	// OAuth routes
+	mux.HandleFunc("/oauth/callback", handler.OAuthCallback)
+	mux.HandleFunc("/oauth/github/", handler.OAuthInit)
+
+	// Login page
+	mux.HandleFunc("/login/", handler.Login)
+
+	fmt.Println("✓ Routes configured")
+	fmt.Println()
+	fmt.Println("🚀 Server starting...")
+	fmt.Println()
+
+	// Start server
+	if err := http.ListenAndServe(cfg.Server.Listen, mux); err != nil {
+		log.Fatalf("Server failed: %v", err)
 	}
 }
