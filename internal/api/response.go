@@ -40,6 +40,12 @@ type SignRequest struct {
 	AccessToken string `json:"access_token"`
 }
 
+// HostSignRequest is the request for host certificate signing
+type HostSignRequest struct {
+	PublicKey   string   `json:"public_key"`
+	Principals  []string `json:"principals"`
+}
+
 // SignResponse is the response for certificate signing
 type SignResponse struct {
 	Certificate string `json:"certificate"`

@@ -83,3 +83,8 @@ func (ca *CA) SignHostKey(hostKey ssh.PublicKey, principals []string, ttl time.D
 func (ca *CA) PublicKey() ssh.PublicKey {
 	return ca.pubKey
 }
+
+// Signer returns the CA signer
+func (ca *CA) Signer() ssh.Signer {
+	return ca.signer
+}

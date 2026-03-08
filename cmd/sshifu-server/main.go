@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/azophy/sshifu/internal/api"
+	"github.com/azophy/sshifu/internal/cert"
 	"github.com/azophy/sshifu/internal/config"
 	"github.com/azophy/sshifu/internal/oauth"
 	"github.com/azophy/sshifu/internal/session"
@@ -59,6 +60,13 @@ func main() {
 
 	fmt.Println()
 
+	// Load CA private key
+	ca, err := cert.LoadCA(cfg.CA.PrivateKey)
+	if err != nil {
+		log.Fatalf("Failed to load CA private key: %v", err)
+	}
+	fmt.Println("✓ CA loaded successfully")
+
 	// Initialize session store
 	sessionStore := session.NewStore(15 * time.Minute)
 	fmt.Println("✓ Session store initialized")
@@ -89,8 +97,14 @@ func main() {
 	}
 	caPubKey := strings.TrimSpace(string(caPubKeyBytes))
 
+	// Prepare handler config
+	handlerCfg := &api.Config{
+		TTL:        cfg.DefaultTTL(),
+		Extensions: cfg.Cert.Extensions,
+	}
+
 	// Initialize API handler
-	handler, err := api.NewHandler(sessionStore, oauthProvider, cfg.Server.PublicURL)
+	handler, err := api.NewHandler(sessionStore, oauthProvider, ca.Signer(), handlerCfg, cfg.Server.PublicURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize API handler: %v", err)
 	}

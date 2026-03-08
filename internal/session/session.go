@@ -120,3 +120,16 @@ func (s *Store) cleanup() {
 		}
 	}
 }
+
+// Range iterates over all sessions in the store
+// The function f is called for each session until it returns false
+func (s *Store) Range(f func(id string, sess *LoginSession) bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for id, sess := range s.sessions {
+		if !f(id, sess) {
+			return
+		}
+	}
+}

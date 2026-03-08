@@ -3,29 +3,41 @@ package api
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/azophy/sshifu/internal/cert"
 	"github.com/azophy/sshifu/internal/oauth"
 	"github.com/azophy/sshifu/internal/session"
+	"golang.org/x/crypto/ssh"
 )
 
 // Handler manages HTTP request handling
 type Handler struct {
-	sessionStore *session.Store
+	sessionStore  *session.Store
 	oauthProvider oauth.Provider
+	caSigner      ssh.Signer
+	config        *Config
 	publicURL     string
 	loginTemplate *template.Template
 }
 
+// Config holds configuration for certificate signing
+type Config struct {
+	TTL        time.Duration
+	Extensions map[string]bool
+}
+
 // NewHandler creates a new API handler
-func NewHandler(store *session.Store, provider oauth.Provider, publicURL string) (*Handler, error) {
+func NewHandler(store *session.Store, provider oauth.Provider, caSigner ssh.Signer, cfg *Config, publicURL string) (*Handler, error) {
 	// Try multiple paths for the template (handles different working directories)
 	var tmpl *template.Template
 	var err error
-	
+
 	// Try current directory first (for running from project root)
 	tmpl, err = template.ParseFiles("web/login.html")
 	if err != nil {
@@ -43,6 +55,8 @@ func NewHandler(store *session.Store, provider oauth.Provider, publicURL string)
 	return &Handler{
 		sessionStore:  store,
 		oauthProvider: provider,
+		caSigner:      caSigner,
+		config:        cfg,
 		publicURL:     publicURL,
 		loginTemplate: tmpl,
 	}, nil
@@ -257,12 +271,124 @@ func (h *Handler) CAPublicKey(w http.ResponseWriter, r *http.Request, caPubKey s
 
 // SignUserCertificate handles POST /api/v1/sign/user
 func (h *Handler) SignUserCertificate(w http.ResponseWriter, r *http.Request) {
-	// This will be implemented in Milestone 6
-	WriteError(w, http.StatusNotImplemented, "not implemented")
+	if r.Method != http.MethodPost {
+		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// Parse request body
+	var req SignRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Failed to decode request: %v", err)
+		WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// Validate public key
+	if req.PublicKey == "" {
+		WriteError(w, http.StatusBadRequest, "public_key required")
+		return
+	}
+
+	// Validate access token
+	if req.AccessToken == "" {
+		WriteError(w, http.StatusBadRequest, "access_token required")
+		return
+	}
+
+	// Find session by access token
+	var username string
+	found := false
+	h.sessionStore.Range(func(id string, sess *session.LoginSession) bool {
+		if sess.Status == session.StatusApproved && sess.AccessToken == req.AccessToken {
+			username = sess.Username
+			found = true
+			return false
+		}
+		return true
+	})
+
+	if !found {
+		WriteError(w, http.StatusUnauthorized, "invalid or expired access token")
+		return
+	}
+
+	// Parse user public key
+	userKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(req.PublicKey))
+	if err != nil {
+		log.Printf("Failed to parse public key: %v", err)
+		WriteError(w, http.StatusBadRequest, "invalid public key")
+		return
+	}
+
+	// Sign the certificate
+	certBytes, err := cert.SignUserKey(
+		h.caSigner,
+		userKey,
+		username,
+		h.config.TTL,
+		h.config.Extensions,
+	)
+	if err != nil {
+		log.Printf("Failed to sign certificate: %v", err)
+		WriteError(w, http.StatusInternalServerError, "failed to sign certificate")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, SignResponse{
+		Certificate: string(certBytes),
+	})
 }
 
 // SignHostCertificate handles POST /api/v1/sign/host
 func (h *Handler) SignHostCertificate(w http.ResponseWriter, r *http.Request) {
-	// This will be implemented in Milestone 8
-	WriteError(w, http.StatusNotImplemented, "not implemented")
+	if r.Method != http.MethodPost {
+		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// Parse request body
+	var req HostSignRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Failed to decode request: %v", err)
+		WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// Validate host public key
+	if req.PublicKey == "" {
+		WriteError(w, http.StatusBadRequest, "public_key required")
+		return
+	}
+
+	// Validate principals
+	if len(req.Principals) == 0 {
+		WriteError(w, http.StatusBadRequest, "principals required")
+		return
+	}
+
+	// Parse host public key
+	hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(req.PublicKey))
+	if err != nil {
+		log.Printf("Failed to parse host public key: %v", err)
+		WriteError(w, http.StatusBadRequest, "invalid public key")
+		return
+	}
+
+	// Sign the host certificate
+	certBytes, err := cert.SignHostKey(
+		h.caSigner,
+		hostKey,
+		req.Principals,
+		h.config.TTL,
+	)
+	if err != nil {
+		log.Printf("Failed to sign host certificate: %v", err)
+		WriteError(w, http.StatusInternalServerError, "failed to sign host certificate")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, SignResponse{
+		Certificate: string(certBytes),
+	})
 }
