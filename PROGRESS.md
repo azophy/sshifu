@@ -269,9 +269,92 @@ The login session system was already implemented in Milestone 1 (`internal/sessi
 
 ---
 
+### Milestone 7 — CLI Implementation (`sshifu`) ✅
+
+**Status:** Complete
+**Date:** March 8, 2026
+
+**What was done:**
+
+1. **Implemented complete CLI workflow** (`cmd/sshifu/main.go`)
+   - `parseArgs()` - parses command-line arguments
+     - Extracts sshifu-server URL (first argument)
+     - Handles `-i` option for custom identity file
+     - Passes remaining arguments to SSH command
+   - `run()` - orchestrates the main CLI workflow
+     - Finds identity key (explicit or default)
+     - Checks for existing valid certificate
+     - Performs login flow if no valid cert
+     - Requests and saves certificate
+     - Installs CA key to known_hosts
+     - Executes SSH with certificate
+
+2. **Implemented identity key detection**
+   - Uses `-i` option if provided
+   - Falls back to default keys: `~/.ssh/id_ed25519`, `~/.ssh/id_rsa`, `~/.ssh/id_ecdsa`
+   - Expands tilde (`~`) to home directory
+
+3. **Implemented certificate validity check**
+   - Checks for certificate file at `~/.ssh/id_*-cert.pub`
+   - Verifies certificate type is UserCert
+   - Checks expiration time
+   - Validates principal matches username
+   - Skips login if valid certificate found
+
+4. **Implemented OAuth login flow**
+   - `startLoginSession()` - POST `/api/v1/login/start`
+     - Creates new login session
+     - Returns session ID and login URL
+   - `pollLoginStatus()` - GET `/api/v1/login/status/{session_id}`
+     - Polls every 2 seconds for up to 10 minutes
+     - Displays progress dots while waiting
+     - Returns access token on approval
+
+5. **Implemented certificate request**
+   - `requestCertificate()` - POST `/api/v1/sign/user`
+     - Loads user public key
+     - Sends public key and access token
+     - Receives signed SSH certificate
+   - `saveCertificate()` - saves certificate to disk
+     - Creates `.ssh` directory if needed
+     - Sets proper permissions (0600)
+
+6. **Implemented CA key installation**
+   - `installCAKey()` - GET `/api/v1/ca/pub`
+     - Downloads CA public key
+   - `addCAToKnownHosts()` - appends to `~/.ssh/known_hosts`
+     - Adds `@cert-authority * <ca-key>` entry
+     - Checks for duplicate entries
+     - Creates file if doesn't exist
+
+7. **Implemented SSH execution**
+   - `execSSH()` - executes system SSH command
+     - Adds `-o CertificateFile=<cert>` option
+     - Passes through all SSH arguments
+     - Forwards stdin/stdout/stderr
+     - Preserves SSH exit code
+
+8. **Added helper function** (`internal/ssh/key.go`)
+   - `MarshalAuthorizedKey()` - marshals public key to authorized_keys format
+
+9. **Added comprehensive unit tests** (`cmd/sshifu/sshifu_test.go`)
+   - `TestParseArgs` - CLI argument parsing (4 sub-tests)
+   - `TestJoinURL` - URL joining with various base formats (4 sub-tests)
+   - `TestCAKeyExists` - known_hosts CA key detection (3 sub-tests)
+   - `TestSaveCertificate` - certificate file saving
+   - `TestGetCertificatePath` - certificate path generation (3 sub-tests)
+
+**Verification:**
+- ✅ All 5 new unit tests pass (17 sub-tests total)
+- ✅ Total test count: 60 tests across all packages
+- ✅ Build succeeds with no errors
+- ✅ CLI displays proper usage on missing arguments
+- ✅ Certificate reuse works when valid cert exists
+
+---
+
 ## Pending Milestones
 
-### Milestone 7 — CLI Implementation
 ### Milestone 8 — Server Tool
 ### Milestone 9 — End-to-End Testing
 ### Milestone 10 — Hardening
