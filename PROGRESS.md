@@ -4,7 +4,7 @@
 
 ### Milestone 1 — Project Bootstrap ✅
 
-**Status:** Complete  
+**Status:** Complete
 **Date:** March 8, 2026
 
 **What was done:**
@@ -58,9 +58,38 @@
 
 ---
 
+### Milestone 2 — Config + Setup Wizard ✅
+
+**Status:** Complete
+**Date:** March 8, 2026
+
+**What was done:**
+
+1. **Implemented setup wizard** (`internal/config/wizard.go`)
+   - Interactive prompts for server configuration
+   - Asks for: server public URL, CA key path, GitHub OAuth credentials, allowed org
+   - Auto-generates CA keypair if not present
+   - Saves configuration to `config.yml`
+
+2. **Updated sshifu-server main.go**
+   - Checks for existing config on startup
+   - Launches wizard if config not found
+   - Displays configuration summary on startup
+
+3. **Added helper functions to config package**
+   - `Save()` - saves config to YAML file
+   - `Marshal()` - marshals config to YAML
+   - `GenerateCAKeys()` - generates ED25519 CA keypair
+
+**Verification:**
+- ✅ Wizard starts when config.yml is missing
+- ✅ Config loads successfully when present
+- ✅ All binaries build without errors
+
+---
+
 ## Pending Milestones
 
-### Milestone 2 — Config + Setup Wizard
 ### Milestone 3 — SSH Certificate Authority
 ### Milestone 4 — Login Session System
 ### Milestone 5 — GitHub OAuth Integration
