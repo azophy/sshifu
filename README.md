@@ -57,27 +57,42 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 
 - GitHub organization (for OAuth)
 - SSH servers running OpenSSH
+- Node.js (for `npx`, comes with npm)
 
-### Installation
+### Quick Start (No Installation Required)
 
-#### Option 1: npm (Recommended)
+Run sshifu commands instantly using `npx` - no installation needed:
 
-Install globally using npm:
+```bash
+# Connect to SSH server via sshifu
+npx sshifu auth.example.com user@target-server.com
+
+# Start the sshifu server (OAuth gateway & CA)
+npx sshifu-server
+
+# Configure SSH server to trust sshifu CA (requires sudo)
+sudo npx sshifu-trust auth.example.com
+```
+
+The first time you run any command, npm automatically downloads the correct binary for your platform.
+
+### Installation Options
+
+#### Option 1: Install Globally via npm
+
+For frequent use, install globally:
 
 ```bash
 npm install -g sshifu
 ```
 
-Run without installation using `npx`:
+Then use commands directly:
 
 ```bash
-npx sshifu auth.example.com user@target-server.com
+sshifu auth.example.com user@target-server.com
+sshifu-server
+sshifu-trust auth.example.com
 ```
-
-The npm package automatically downloads the correct binary for your platform:
-- **Linux**: x64, arm64, arm
-- **macOS**: Intel (x64), Apple Silicon (arm64)
-- **Windows**: x64
 
 #### Option 2: Pre-built Binary
 
@@ -102,7 +117,7 @@ unzip sshifu.zip
 # Move sshifu.exe to a directory in your PATH
 ```
 
-#### Option 2: Build from Source
+#### Option 3: Build from Source
 
 Requires Go 1.25+:
 
