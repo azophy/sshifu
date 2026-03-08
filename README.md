@@ -18,57 +18,20 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 
 ## Quick Start
 
-### Prerequisites
-
-- **Publicly accessible address** for the sshifu-server (for testing, you can use [localhost.run](https://localhost.run) to expose your local server)
-- **GitHub OAuth Client ID & Secret** from your GitHub organization
-- **SSH server** with the same username as the GitHub username you want to log in with
-
-### Step 1: Run sshifu-server
-
 ```bash
+# Expose your server publicly (here we're using localhost.run for testing)
+ssh -R 80:localhost:8080 nokey@localhost.run
+
+# Prepare GitHub OAuth credentials & note the localhost.run URL from above.
+# In another terminal, start the sshifu server and follow the wizard.
 npx sshifu-server
+
+# On the SSH server machine, configure trust (requires sudo)
+sudo npx sshifu-trust <localhost.run address>
+
+# From another machine, connect to the SSH server
+npx sshifu <localhost.run address> <ssh server address>
 ```
-
-Follow the interactive prompts to configure:
-- Server listen address (e.g., `:8080`)
-- Public URL (your publicly accessible address)
-- GitHub OAuth Client ID and Secret
-- Allowed GitHub organization
-
-### Step 2: Configure SSH trust
-
-On your target SSH server, run:
-
-```bash
-sudo npx sshifu-trust <sshifu-server-public-url>
-```
-
-Example:
-```bash
-sudo npx sshifu-trust https://your-server.ngrok.io
-```
-
-This configures the SSH server to trust certificates issued by sshifu.
-
-### Step 3: Connect from another machine
-
-From a different machine, connect to your SSH server:
-
-```bash
-npx sshifu <sshifu-server-address> <username>@<target-ssh-server>
-```
-
-Example:
-```bash
-npx sshifu https://your-server.ngrok.io user@target-server.com
-```
-
-The first time you connect:
-1. A login URL will be displayed
-2. Open the URL in your browser and authenticate via GitHub
-3. The CLI will automatically detect approval and obtain a certificate
-4. SSH connection will be established
 
 ## Architecture
 
