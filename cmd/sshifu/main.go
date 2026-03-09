@@ -17,7 +17,7 @@ import (
 	"github.com/azophy/sshifu/internal/ssh"
 )
 
-const version = "0.0.0-dev"
+var version = "0.0.0-dev"
 
 // Config holds the CLI configuration
 type Config struct {

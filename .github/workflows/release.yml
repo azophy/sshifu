@@ -48,10 +48,14 @@ jobs:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
         run: |
+          # Extract version from release tag (remove leading 'v' if present)
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+
           mkdir -p dist
-          go build -o dist/sshifu${{ matrix.ext }} ./cmd/sshifu
-          go build -o dist/sshifu-server${{ matrix.ext }} ./cmd/sshifu-server
-          go build -o dist/sshifu-trust${{ matrix.ext }} ./cmd/sshifu-trust
+          go build -ldflags "-X main.version=$VERSION" -o dist/sshifu${{ matrix.ext }} ./cmd/sshifu
+          go build -ldflags "-X main.version=$VERSION" -o dist/sshifu-server${{ matrix.ext }} ./cmd/sshifu-server
+          go build -ldflags "-X main.version=$VERSION" -o dist/sshifu-trust${{ matrix.ext }} ./cmd/sshifu-trust
 
       - name: Create archive
         id: archive

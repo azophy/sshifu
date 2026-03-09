@@ -16,12 +16,12 @@ import (
 	"time"
 )
 
-const (
-	version           = "0.0.0-dev"
-	caInstallPath     = "/etc/ssh/sshifu_ca.pub"
-	hostCertPath      = "/etc/ssh/ssh_host_ed25519_key-cert.pub"
-	hostKeyPath       = "/etc/ssh/ssh_host_ed25519_key.pub"
-	sshdConfigPath    = "/etc/ssh/sshd_config"
+var (
+	version            = "0.0.0-dev"
+	caInstallPath      = "/etc/ssh/sshifu_ca.pub"
+	hostCertPath       = "/etc/ssh/ssh_host_ed25519_key-cert.pub"
+	hostKeyPath        = "/etc/ssh/ssh_host_ed25519_key.pub"
+	sshdConfigPath     = "/etc/ssh/sshd_config"
 	defaultHTTPTimeout = 30 * time.Second
 	defaultCertValidity = "720h" // 30 days for host certificates
 )

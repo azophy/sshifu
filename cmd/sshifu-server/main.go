@@ -15,7 +15,7 @@ import (
 	"github.com/azophy/sshifu/internal/session"
 )
 
-const (
+var (
 	version    = "0.0.0-dev"
 	configPath = "config.yml"
 )
