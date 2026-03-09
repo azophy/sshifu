@@ -4,9 +4,9 @@
   "description": "SSH authentication system with short-lived certificates and OAuth authentication (GitHub organizations)",
   "main": "bin/sshifu.js",
   "bin": {
-    "sshifu": "./bin/sshifu.js",
-    "sshifu-server": "./bin/sshifu-server.js",
-    "sshifu-trust": "./bin/sshifu-trust.js"
+    "sshifu": "bin/sshifu.js",
+    "sshifu-server": "bin/sshifu-server.js",
+    "sshifu-trust": "bin/sshifu-trust.js"
   },
   "scripts": {
     "postinstall": "node scripts/install.js"
