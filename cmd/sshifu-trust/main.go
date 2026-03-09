@@ -404,13 +404,33 @@ func updateSSHDConfig() error {
 
 // restartSSHD restarts the SSH daemon
 func restartSSHD() error {
+	// Common SSH service names across different Linux distributions
+	sshServiceNames := []string{"sshd", "ssh", "openssh-daemon", "openssh"}
+
 	// Detect init system and use appropriate command
 	if isSystemd() {
-		return runCommand("systemctl", "restart", "sshd")
+		// Try systemctl with different service names
+		for _, serviceName := range sshServiceNames {
+			fmt.Printf("   Trying systemctl restart %s... ", serviceName)
+			if err := runCommandQuiet("systemctl", "restart", serviceName); err == nil {
+				fmt.Println("success")
+				return nil
+			}
+			fmt.Println("failed")
+		}
+		return fmt.Errorf("failed to restart SSH service with systemctl (tried: %s)", strings.Join(sshServiceNames, ", "))
 	}
 
-	// Fallback to service command
-	return runCommand("service", "ssh", "restart")
+	// Fallback to service command with different service names
+	for _, serviceName := range sshServiceNames {
+		fmt.Printf("   Trying service %s restart... ", serviceName)
+		if err := runCommandQuiet("service", serviceName, "restart"); err == nil {
+			fmt.Println("success")
+			return nil
+		}
+		fmt.Println("failed")
+	}
+	return fmt.Errorf("failed to restart SSH service with service command (tried: %s)", strings.Join(sshServiceNames, ", "))
 }
 
 // isSystemd checks if systemd is the init system
@@ -418,6 +438,14 @@ func isSystemd() bool {
 	// Check if systemctl is available
 	_, err := exec.LookPath("systemctl")
 	return err == nil
+}
+
+// runCommandQuiet executes a shell command without output (used for service detection)
+func runCommandQuiet(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run()
 }
 
 // runCommand executes a shell command
