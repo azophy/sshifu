@@ -17,6 +17,8 @@ import (
 	"github.com/azophy/sshifu/internal/ssh"
 )
 
+const version = "0.0.0-dev"
+
 // Config holds the CLI configuration
 type Config struct {
 	ServerURL    string
@@ -33,12 +35,18 @@ type LoginStatus struct {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: sshifu <sshifu-server> [ssh arguments]\n")
-		fmt.Fprintf(os.Stderr, "\nExample:\n")
-		fmt.Fprintf(os.Stderr, "  sshifu auth.example.com                    # Connect to auth.example.com\n")
-		fmt.Fprintf(os.Stderr, "  sshifu auth.example.com target-server.com  # Connect to target-server.com\n")
-		fmt.Fprintf(os.Stderr, "  sshifu auth.example.com -i ~/.ssh/my_key target-server.com\n")
+		printUsage()
 		os.Exit(1)
+	}
+
+	// Handle special commands
+	switch os.Args[1] {
+	case "-h", "-help", "--help", "help":
+		printUsage()
+		os.Exit(0)
+	case "-v", "-version", "--version", "version":
+		printVersion()
+		os.Exit(0)
 	}
 
 	// Parse arguments
@@ -53,6 +61,29 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func printVersion() {
+	fmt.Printf("sshifu version %s\n", version)
+}
+
+func printUsage() {
+	fmt.Printf("sshifu version %s\n", version)
+	fmt.Println()
+	fmt.Println("Usage: sshifu <sshifu-server> [ssh arguments]")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  help, -h, --help     Show this help message")
+	fmt.Println("  version, -v, --version  Show version information")
+	fmt.Println()
+	fmt.Println("Arguments:")
+	fmt.Println("  <sshifu-server>      URL or hostname of the sshifu server")
+	fmt.Println("  [ssh arguments]      Additional arguments to pass to SSH")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  sshifu auth.example.com                    # Connect to auth.example.com")
+	fmt.Println("  sshifu auth.example.com target-server.com  # Connect to target-server.com")
+	fmt.Println("  sshifu auth.example.com -i ~/.ssh/my_key target-server.com")
 }
 
 // parseArgs parses command-line arguments

@@ -17,23 +17,29 @@ import (
 )
 
 const (
-	caInstallPath       = "/etc/ssh/sshifu_ca.pub"
-	hostCertPath        = "/etc/ssh/ssh_host_ed25519_key-cert.pub"
-	hostKeyPath         = "/etc/ssh/ssh_host_ed25519_key.pub"
-	sshdConfigPath      = "/etc/ssh/sshd_config"
-	defaultHTTPTimeout  = 30 * time.Second
+	version           = "0.0.0-dev"
+	caInstallPath     = "/etc/ssh/sshifu_ca.pub"
+	hostCertPath      = "/etc/ssh/ssh_host_ed25519_key-cert.pub"
+	hostKeyPath       = "/etc/ssh/ssh_host_ed25519_key.pub"
+	sshdConfigPath    = "/etc/ssh/sshd_config"
+	defaultHTTPTimeout = 30 * time.Second
 	defaultCertValidity = "720h" // 30 days for host certificates
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: sudo sshifu-trust <sshifu-server>")
-		fmt.Println()
-		fmt.Println("Configure SSH server to trust sshifu Certificate Authority.")
-		fmt.Println()
-		fmt.Println("Example:")
-		fmt.Println("  sudo sshifu-trust auth.example.com")
+		printUsage()
 		os.Exit(1)
+	}
+
+	// Handle special commands
+	switch os.Args[1] {
+	case "-h", "-help", "--help", "help":
+		printUsage()
+		os.Exit(0)
+	case "-v", "-version", "--version", "version":
+		printVersion()
+		os.Exit(0)
 	}
 
 	server := os.Args[1]
@@ -45,6 +51,29 @@ func main() {
 
 	fmt.Println("\n✓ SSH server configured successfully!")
 	fmt.Println("  SSH daemon has been restarted.")
+}
+
+func printVersion() {
+	fmt.Printf("sshifu-trust version %s\n", version)
+}
+
+func printUsage() {
+	fmt.Printf("sshifu-trust version %s\n", version)
+	fmt.Println()
+	fmt.Println("Usage: sudo sshifu-trust <sshifu-server>")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  help, -h, --help     Show this help message")
+	fmt.Println("  version, -v, --version  Show version information")
+	fmt.Println()
+	fmt.Println("Description:")
+	fmt.Println("  Configure SSH server to trust sshifu Certificate Authority.")
+	fmt.Println()
+	fmt.Println("Arguments:")
+	fmt.Println("  <sshifu-server>  URL or hostname of the sshifu server")
+	fmt.Println()
+	fmt.Println("Example:")
+	fmt.Println("  sudo sshifu-trust auth.example.com")
 }
 
 func run(server string) error {

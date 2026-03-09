@@ -15,9 +15,24 @@ import (
 	"github.com/azophy/sshifu/internal/session"
 )
 
-const configPath = "config.yml"
+const (
+	version    = "0.0.0-dev"
+	configPath = "config.yml"
+)
 
 func main() {
+	// Handle special commands
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "-h", "-help", "--help", "help":
+			printUsage()
+			os.Exit(0)
+		case "-v", "-version", "--version", "version":
+			printVersion()
+			os.Exit(0)
+		}
+	}
+
 	fmt.Println("🔐 Sshifu Server - SSH Certificate Authority and OAuth Gateway")
 	fmt.Println()
 
@@ -137,4 +152,25 @@ func main() {
 	if err := http.ListenAndServe(cfg.Server.Listen, mux); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func printVersion() {
+	fmt.Printf("sshifu-server version %s\n", version)
+}
+
+func printUsage() {
+	fmt.Printf("sshifu-server version %s\n", version)
+	fmt.Println()
+	fmt.Println("Usage: sshifu-server [options]")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  help, -h, --help     Show this help message")
+	fmt.Println("  version, -v, --version  Show version information")
+	fmt.Println()
+	fmt.Println("Description:")
+	fmt.Println("  SSH Certificate Authority and OAuth Gateway")
+	fmt.Println()
+	fmt.Println("Configuration:")
+	fmt.Println("  Configuration file: config.yml")
+	fmt.Println("  If no configuration exists, a setup wizard will run.")
 }
