@@ -115,53 +115,31 @@ func TestJoinURL(t *testing.T) {
 	}
 }
 
-func TestCAKeyExists(t *testing.T) {
-	tmpDir := t.TempDir()
-	knownHostsPath := filepath.Join(tmpDir, "known_hosts")
-
+func TestCreateTempKnownHosts(t *testing.T) {
 	// Use a sample CA key for testing
 	caKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
 
-	t.Run("empty file", func(t *testing.T) {
-		// Create empty file
-		if err := os.WriteFile(knownHostsPath, []byte(""), 0600); err != nil {
-			t.Fatalf("Failed to create file: %v", err)
-		}
+	tmpFile, err := createTempKnownHosts(caKey)
+	if err != nil {
+		t.Fatalf("createTempKnownHosts() error = %v", err)
+	}
+	defer os.Remove(tmpFile)
 
-		exists, err := caKeyExists(knownHostsPath, caKey)
-		if err != nil {
-			t.Fatalf("caKeyExists() error = %v", err)
-		}
-		if exists {
-			t.Errorf("caKeyExists() = true, want false")
-		}
-	})
+	// Verify file exists
+	if _, err := os.Stat(tmpFile); os.IsNotExist(err) {
+		t.Errorf("Temp file was not created")
+	}
 
-	t.Run("key exists", func(t *testing.T) {
-		// Create file with CA key
-		entry := "@cert-authority * " + caKey + "\n"
-		if err := os.WriteFile(knownHostsPath, []byte(entry), 0600); err != nil {
-			t.Fatalf("Failed to create file: %v", err)
-		}
+	// Verify content
+	content, err := os.ReadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to read temp file: %v", err)
+	}
 
-		exists, err := caKeyExists(knownHostsPath, caKey)
-		if err != nil {
-			t.Fatalf("caKeyExists() error = %v", err)
-		}
-		if !exists {
-			t.Errorf("caKeyExists() = false, want true")
-		}
-	})
-
-	t.Run("nonexistent file", func(t *testing.T) {
-		exists, err := caKeyExists(filepath.Join(tmpDir, "nonexistent"), caKey)
-		if err != nil {
-			t.Fatalf("caKeyExists() error = %v", err)
-		}
-		if exists {
-			t.Errorf("caKeyExists() = true, want false")
-		}
-	})
+	expected := "@cert-authority * " + caKey + "\n"
+	if string(content) != expected {
+		t.Errorf("Temp file content = %v, want %v", string(content), expected)
+	}
 }
 
 func TestSaveCertificate(t *testing.T) {

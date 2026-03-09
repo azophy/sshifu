@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/azophy/sshifu/internal/api"
@@ -133,7 +132,7 @@ func run(config *Config) error {
 	certPath := ssh.GetCertificatePath(identityKey)
 	if valid, err := ssh.IsCertificateValid(certPath, ""); err == nil && valid {
 		fmt.Println("Valid certificate found, skipping login")
-		return execSSH(config, certPath)
+		return execSSH(config, certPath, "")
 	}
 
 	// Step 3: Perform login flow
@@ -157,13 +156,14 @@ func run(config *Config) error {
 	}
 	fmt.Printf("Certificate saved to: %s\n", certPath)
 
-	// Step 6: Download and install CA public key
-	if err := installCAKey(config.ServerURL); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to install CA key: %v\n", err)
+	// Step 6: Download CA public key
+	caKey, err := getCAKey(config.ServerURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to get CA key: %v\n", err)
 	}
 
 	// Step 7: Execute SSH
-	return execSSH(config, certPath)
+	return execSSH(config, certPath, caKey)
 }
 
 // performLogin performs the OAuth login flow
@@ -302,87 +302,49 @@ func saveCertificate(certPath, certificate string) error {
 	return nil
 }
 
-// installCAKey downloads and installs the CA public key to known_hosts
-func installCAKey(serverURL string) error {
+// getCAKey downloads the CA public key from the server
+func getCAKey(serverURL string) (string, error) {
 	apiURL := joinURL(serverURL, "/api/v1/ca/pub")
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
-		return fmt.Errorf("failed to get CA key: %w", err)
+		return "", fmt.Errorf("failed to get CA key: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("CA key request failed with status: %d", resp.StatusCode)
+		return "", fmt.Errorf("CA key request failed with status: %d", resp.StatusCode)
 	}
 
 	var result api.CAPublicKeyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return fmt.Errorf("failed to decode CA key: %w", err)
+		return "", fmt.Errorf("failed to decode CA key: %w", err)
 	}
 
-	// Add to known_hosts
-	knownHostsPath := ssh.ExpandTilde("~/.ssh/known_hosts")
-	return addCAToKnownHosts(knownHostsPath, result.PublicKey)
-}
-
-// addCAToKnownHosts adds the CA key to known_hosts
-func addCAToKnownHosts(knownHostsPath, caKey string) error {
-	// Check if CA key already exists
-	exists, err := caKeyExists(knownHostsPath, caKey)
-	if err == nil && exists {
-		return nil // Already installed
-	}
-
-	// Create @cert-authority entry
-	entry := fmt.Sprintf("@cert-authority * %s\n", caKey)
-
-	// Append to known_hosts
-	f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to open known_hosts: %w", err)
-	}
-	defer f.Close()
-
-	if _, err := f.WriteString(entry); err != nil {
-		return fmt.Errorf("failed to write to known_hosts: %w", err)
-	}
-
-	fmt.Println("CA key added to known_hosts")
-	return nil
-}
-
-// caKeyExists checks if a CA key already exists in known_hosts
-func caKeyExists(knownHostsPath, caKey string) (bool, error) {
-	data, err := os.ReadFile(knownHostsPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	// Extract the key part (after the key type)
-	parts := strings.SplitN(caKey, " ", 3)
-	if len(parts) < 2 {
-		return false, nil
-	}
-	keyType := parts[0]
-	keyData := parts[1]
-
-	// Check if this key type and data already exists
-	content := string(data)
-	return strings.Contains(content, keyType+" "+keyData), nil
+	return result.PublicKey, nil
 }
 
 // execSSH executes the SSH command with the certificate
-func execSSH(config *Config, certPath string) error {
+func execSSH(config *Config, certPath, caKey string) error {
 	fmt.Printf("Connecting via SSH...\n")
 
 	// Build SSH command with certificate
 	args := []string{
 		"-o", "CertificateFile=" + certPath,
 	}
+
+	// Add CA key as a temporary known_hosts file if available
+	if caKey != "" {
+		// Create a temporary known_hosts file with the CA key
+		tmpFile, err := createTempKnownHosts(caKey)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to create temporary known_hosts: %v\n", err)
+		} else {
+			defer os.Remove(tmpFile) // Clean up temp file
+			args = append(args, "-o", "UserKnownHostsFile="+tmpFile)
+		}
+	}
+
 	args = append(args, config.SSHArgs...)
 
 	cmd := exec.Command(config.SSHCmd, args...)
@@ -398,6 +360,25 @@ func execSSH(config *Config, certPath string) error {
 	}
 
 	return nil
+}
+
+// createTempKnownHosts creates a temporary known_hosts file with the CA key
+func createTempKnownHosts(caKey string) (string, error) {
+	// Create @cert-authority entry
+	entry := fmt.Sprintf("@cert-authority * %s\n", caKey)
+
+	// Create temporary file
+	tmpFile, err := os.CreateTemp("", "sshifu_known_hosts_*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer tmpFile.Close()
+
+	if _, err := tmpFile.WriteString(entry); err != nil {
+		return "", fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	return tmpFile.Name(), nil
 }
 
 // joinURL joins a base URL with a path
