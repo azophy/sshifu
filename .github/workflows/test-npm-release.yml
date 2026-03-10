@@ -1,0 +1,130 @@
+name: Test npm Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  wait-for-npm:
+    name: Wait for npm packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for npm propagation
+        run: |
+          echo "Waiting 60 seconds for npm packages to propagate..."
+          sleep 60
+
+  test-linux:
+    name: Test Linux (npx)
+    needs: wait-for-npm
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - package: sshifu
+            cmd: sshifu -v
+          - package: sshifu-server
+            cmd: sshifu-server -v
+          - package: sshifu-trust
+            cmd: sshifu-trust -v
+    steps:
+      - name: Test ${{ matrix.package }}
+        run: |
+          npx -y ${{ matrix.package }} -v
+
+  test-linux-alpine:
+    name: Test Alpine Linux (podman)
+    needs: wait-for-npm
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - package: sshifu
+            cmd: sshifu -v
+          - package: sshifu-server
+            cmd: sshifu-server -v
+          - package: sshifu-trust
+            cmd: sshifu-trust -v
+    steps:
+      - name: Set up Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+
+      - name: Test ${{ matrix.package }} in Alpine
+        run: |
+          podman run --rm node:alpine npx -y ${{ matrix.package }} -v
+
+  test-macos:
+    name: Test macOS
+    needs: wait-for-npm
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - package: sshifu
+            cmd: sshifu -v
+          - package: sshifu-server
+            cmd: sshifu-server -v
+          - package: sshifu-trust
+            cmd: sshifu-trust -v
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test ${{ matrix.package }}
+        run: npx -y ${{ matrix.package }} -v
+
+  test-windows:
+    name: Test Windows
+    needs: wait-for-npm
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - package: sshifu
+            cmd: sshifu -v
+          - package: sshifu-server
+            cmd: sshifu-server -v
+          - package: sshifu-trust
+            cmd: sshifu-trust -v
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test ${{ matrix.package }}
+        run: npx -y ${{ matrix.package }} -v
+
+  test-arm-emulated:
+    name: Test ARM (QEMU)
+    needs: wait-for-npm
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            image: arm64v8/node:alpine
+          - arch: arm
+            image: arm32v7/node:alpine
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Test sshifu-server (${{ matrix.arch }})
+        run: |
+          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu-server -v
+
+      - name: Test sshifu (${{ matrix.arch }})
+        run: |
+          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu -v
+
+      - name: Test sshifu-trust (${{ matrix.arch }})
+        run: |
+          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu-trust -v
