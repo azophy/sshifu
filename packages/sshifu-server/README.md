@@ -4,11 +4,23 @@ SSH authentication server with OAuth gateway and certificate authority.
 
 ## Installation
 
+### Quick Start (Recommended)
+
+Use `npx` to run without installing:
+
+```bash
+npx sshifu-server
+```
+
+### Install Globally
+
+For frequent use, install globally:
+
 ```bash
 npm install -g sshifu-server
 ```
 
-## Usage
+Then use directly:
 
 ```bash
 sshifu-server

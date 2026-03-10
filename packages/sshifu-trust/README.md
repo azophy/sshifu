@@ -4,11 +4,23 @@ Configure SSH servers to trust the sshifu certificate authority.
 
 ## Installation
 
+### Quick Start (Recommended)
+
+Use `npx` to run without installing:
+
+```bash
+sudo npx sshifu-trust auth.example.com
+```
+
+### Install Globally
+
+For frequent use, install globally:
+
 ```bash
 npm install -g sshifu-trust
 ```
 
-## Usage
+Then use directly:
 
 ```bash
 sudo sshifu-trust auth.example.com

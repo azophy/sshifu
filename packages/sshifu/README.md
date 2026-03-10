@@ -4,11 +4,23 @@ SSH authentication client with short-lived certificates and OAuth authentication
 
 ## Installation
 
+### Quick Start (Recommended)
+
+Use `npx` to run without installing:
+
+```bash
+npx sshifu auth.example.com user@target-server.com
+```
+
+### Install Globally
+
+For frequent use, install globally:
+
 ```bash
 npm install -g sshifu
 ```
 
-## Usage
+Then use directly:
 
 ```bash
 sshifu auth.example.com user@target-server.com
