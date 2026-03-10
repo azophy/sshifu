@@ -22,14 +22,14 @@ func TestParseArgs(t *testing.T) {
 			name:        "minimal args",
 			args:        []string{"auth.example.com"},
 			wantServer:  "auth.example.com",
-			wantSSHArgs: []string{},
+			wantSSHArgs: []string{"auth.example.com"},
 			wantErr:     false,
 		},
 		{
 			name:        "with target host",
-			args:        []string{"auth.example.com"},
+			args:        []string{"auth.example.com", "target-server.com"},
 			wantServer:  "auth.example.com",
-			wantSSHArgs: []string{},
+			wantSSHArgs: []string{"target-server.com"},
 			wantErr:     false,
 		},
 		{
