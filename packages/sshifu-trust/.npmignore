@@ -1,28 +1,5 @@
-# Development files
-*.go
-cmd/
-internal/
-scripts/
-test/
-tests/
-**/*.test.js
-**/*.spec.js
-
-# Build artifacts
-dist/
-build/
-
-# Logs
-*.log
-npm-debug.log*
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Config files not needed in package
-.config/
-.editorconfig
-.eslintrc*
-.prettierrc*
-tsconfig.json
+# Override root .npmignore for dev package
+# Include binary and scripts for local testing
+!bin/sshifu-trust
+!bin/sshifu-trust.js
+!scripts/
