@@ -9,31 +9,8 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.binary }} (${{ matrix.os }}/${{ matrix.arch }})
+    name: Build All Binaries
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        binary: [sshifu, sshifu-server, sshifu-trust]
-        include:
-          - os: linux
-            arch: amd64
-            ext: ""
-          - os: linux
-            arch: arm64
-            ext: ""
-          - os: linux
-            arch: arm
-            ext: ""
-          - os: darwin
-            arch: amd64
-            ext: ""
-          - os: darwin
-            arch: arm64
-            ext: ""
-          - os: windows
-            arch: amd64
-            ext: .exe
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,55 +21,20 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build binary
-        env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
+      - name: Build all binaries
         run: |
           VERSION="${{ github.event.release.tag_name }}"
           VERSION="${VERSION#v}"
-
-          mkdir -p dist
-          go build -ldflags "-X main.version=$VERSION" -o dist/${{ matrix.binary }}${{ matrix.ext }} ./cmd/${{ matrix.binary }}
-
-      - name: Create archive
-        id: archive
-        run: |
-          cd dist
-          ARCHIVE_NAME="${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}"
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            7z a -tzip "${ARCHIVE_NAME}.zip" ${{ matrix.binary }}${{ matrix.ext }}
-            echo "archive_name=${ARCHIVE_NAME}.zip" >> $GITHUB_OUTPUT
-          else
-            tar -czvf "${ARCHIVE_NAME}.tar.gz" ${{ matrix.binary }}${{ matrix.ext }}
-            echo "archive_name=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.archive.outputs.archive_name }}
-          path: dist/${{ steps.archive.outputs.archive_name }}
-          retention-days: 1
-
-  upload-release:
-    name: Upload Release Assets
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
+          bash scripts/ci-build.sh "$VERSION"
 
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*/*
+          files: dist/*
 
   publish-npm:
     name: Publish to npm
-    needs: upload-release
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -114,4 +56,3 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --workspaces --access public
-# Workflow fix
