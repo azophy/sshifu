@@ -220,6 +220,45 @@ sshifu/
 └── go.mod
 ```
 
+## Testing
+
+### Run All Tests
+
+```bash
+go test ./...
+```
+
+### Run Tests with Coverage
+
+```bash
+go test -cover ./...
+
+# Generate HTML coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+### Run Tests by Package
+
+```bash
+# Certificate tests
+go test ./internal/cert/...
+
+# API tests
+go test ./internal/api/...
+
+# OAuth tests
+go test ./internal/oauth/...
+```
+
+### End-to-End Tests
+
+```bash
+go test ./e2e/...
+```
+
+For detailed testing instructions, see [TESTING.md](TESTING.md) and the [Development Guide](docs/guides/development.md#testing).
+
 ## Security Considerations
 
 - **Short-lived certificates** reduce the impact of compromised keys
