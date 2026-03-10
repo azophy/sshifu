@@ -19,16 +19,17 @@ mkdir -p dist
 for platform in "${PLATFORMS[@]}"; do
   OS="${platform%%:*}"
   ARCH="${platform##*:}"
-  
+
   for binary in "${BINARIES[@]}"; do
     echo "Building ${binary} for ${OS}/${ARCH}..."
-    
+
     EXT=""
     if [ "$OS" = "windows" ]; then
       EXT=".exe"
     fi
-    
-    GOOS="$OS" GOARCH="$ARCH" go build -ldflags "-X main.version=$VERSION" -o "dist/${binary}-${OS}-${ARCH}${EXT}" "./cmd/${binary}"
+
+    # Use static linking for Linux to support musl-based systems (Alpine)
+    CGO_ENABLED=0 GOOS="$OS" GOARCH="$ARCH" go build -ldflags "-X main.version=$VERSION" -o "dist/${binary}-${OS}-${ARCH}${EXT}" "./cmd/${binary}"
     
     if [ "$OS" = "windows" ]; then
       cd dist

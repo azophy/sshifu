@@ -87,19 +87,26 @@ async function main() {
   
   try {
     await download(archiveUrl, archivePath);
-    
+
     // Extract the archive
     console.log(`[sshifu-server] Extracting...`);
+    const archiveBinName = `${PACKAGE_NAME}-${platform}${process.platform === 'win32' ? '.exe' : ''}`;
+    const extractedPath = path.join(binDir, archiveBinName);
     execSync(`tar -xzf "${archivePath}" -C "${binDir}"`, { stdio: 'ignore' });
-    
+
+    // Rename to expected name if different
+    if (archiveBinName !== binName && fs.existsSync(extractedPath)) {
+      fs.renameSync(extractedPath, binPath);
+    }
+
     // Make executable on Unix
     if (process.platform !== 'win32') {
       fs.chmodSync(binPath, 0o755);
     }
-    
+
     // Clean up archive
     fs.unlinkSync(archivePath);
-    
+
     console.log(`[sshifu-server] Binary installed successfully!`);
   } catch (err) {
     console.error(`[sshifu-server] Installation failed: ${err.message}`);
