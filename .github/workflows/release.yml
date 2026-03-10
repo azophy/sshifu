@@ -9,10 +9,11 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}/${{ matrix.arch }}
+    name: Build ${{ matrix.binary }} (${{ matrix.os }}/${{ matrix.arch }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        binary: [sshifu, sshifu-server, sshifu-trust]
         include:
           - os: windows
             arch: amd64
@@ -43,30 +44,27 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build binaries
+      - name: Build binary
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
         run: |
-          # Extract version from release tag (remove leading 'v' if present)
           VERSION="${{ github.event.release.tag_name }}"
           VERSION="${VERSION#v}"
 
           mkdir -p dist
-          go build -ldflags "-X main.version=$VERSION" -o dist/sshifu${{ matrix.ext }} ./cmd/sshifu
-          go build -ldflags "-X main.version=$VERSION" -o dist/sshifu-server${{ matrix.ext }} ./cmd/sshifu-server
-          go build -ldflags "-X main.version=$VERSION" -o dist/sshifu-trust${{ matrix.ext }} ./cmd/sshifu-trust
+          go build -ldflags "-X main.version=$VERSION" -o dist/${{ matrix.binary }}${{ matrix.ext }} ./cmd/${{ matrix.binary }}
 
       - name: Create archive
         id: archive
         run: |
           cd dist
-          ARCHIVE_NAME="sshifu-${{ matrix.os }}-${{ matrix.arch }}"
+          ARCHIVE_NAME="${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}"
           if [ "${{ matrix.os }}" = "windows" ]; then
-            7z a -tzip "${ARCHIVE_NAME}.zip" *
+            7z a -tzip "${ARCHIVE_NAME}.zip" ${{ matrix.binary }}${{ matrix.ext }}
             echo "archive_name=${ARCHIVE_NAME}.zip" >> $GITHUB_OUTPUT
           else
-            tar -czvf "${ARCHIVE_NAME}.tar.gz" *
+            tar -czvf "${ARCHIVE_NAME}.tar.gz" ${{ matrix.binary }}${{ matrix.ext }}
             echo "archive_name=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_OUTPUT
           fi
 
@@ -89,21 +87,13 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Update package.json version
+      - name: Sync workspace versions
         run: |
           VERSION="${{ github.event.release.tag_name }}"
-          # Remove leading 'v' if present
           VERSION="${VERSION#v}"
-          # Normalize to semver (ensure X.Y.Z format)
-          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            VERSION="${VERSION}.0"
-          elif [[ "$VERSION" =~ ^[0-9]+$ ]]; then
-            VERSION="${VERSION}.0.0"
-          fi
-          jq --arg version "$VERSION" '.version = $version' package.json > package.json.tmp
-          mv package.json.tmp package.json
+          node scripts/sync-version.js "$VERSION"
 
-      - name: Publish to npm
+      - name: Publish workspace packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        run: npm publish --workspaces --access public

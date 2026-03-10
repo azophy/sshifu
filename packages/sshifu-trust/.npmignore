@@ -1,0 +1,28 @@
+# Development files
+*.go
+cmd/
+internal/
+scripts/
+test/
+tests/
+**/*.test.js
+**/*.spec.js
+
+# Build artifacts
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Config files not needed in package
+.config/
+.editorconfig
+.eslintrc*
+.prettierrc*
+tsconfig.json

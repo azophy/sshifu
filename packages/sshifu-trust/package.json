@@ -1,0 +1,43 @@
+{
+  "name": "sshifu-trust",
+  "version": "0.0.0-dev",
+  "description": "Configure SSH servers to trust sshifu certificate authority",
+  "main": "bin/sshifu-trust.js",
+  "bin": {
+    "sshifu-trust": "bin/sshifu-trust.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azophy/sshifu.git"
+  },
+  "keywords": [
+    "ssh",
+    "certificate",
+    "trust",
+    "ca",
+    "authentication",
+    "security"
+  ],
+  "author": "azophy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/azophy/sshifu/issues"
+  },
+  "homepage": "https://github.com/azophy/sshifu#readme",
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64",
+    "arm"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

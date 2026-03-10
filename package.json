@@ -1,45 +1,14 @@
 {
-  "name": "sshifu",
+  "name": "sshifu-monorepo",
   "version": "0.0.0-dev",
-  "description": "SSH authentication system with short-lived certificates and OAuth authentication (GitHub organizations)",
-  "main": "bin/sshifu.js",
-  "bin": {
-    "sshifu": "bin/sshifu.js",
-    "sshifu-server": "bin/sshifu-server.js",
-    "sshifu-trust": "bin/sshifu-trust.js"
-  },
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "postinstall": "node scripts/install.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/azophy/sshifu.git"
-  },
-  "keywords": [
-    "ssh",
-    "certificate",
-    "oauth",
-    "github",
-    "authentication",
-    "security"
-  ],
-  "author": "azophy",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/azophy/sshifu/issues"
-  },
-  "homepage": "https://github.com/azophy/sshifu#readme",
-  "os": [
-    "linux",
-    "darwin",
-    "win32"
-  ],
-  "cpu": [
-    "x64",
-    "arm64",
-    "arm"
-  ],
-  "engines": {
-    "node": ">=14.0.0"
+    "build": "go build ./cmd/...",
+    "build:all": "npm run build && npm run build:binaries",
+    "build:binaries": "node scripts/build-all-binaries.js",
+    "publish:all": "npm publish --workspaces --access public"
   }
 }
