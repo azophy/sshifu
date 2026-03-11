@@ -16,6 +16,16 @@ A minimal alternative to complex SSH access platforms like Teleport, while remai
 - 📦 **Minimal infrastructure** - Single server component, no database required
 - 👥 **Designed for small teams** - Optimized for teams with <50 users
 
+## How Sshifu Works
+
+![Sshifu Flow Diagram](docs/sshifu-flow.png)
+
+The diagram above shows the three-step setup process:
+
+1. **Setup sshifu server** - Start the sshifu-server (e.g., `npx sshifu-server`)
+2. **Setup SSH server to trust sshifu server** - Configure trust on the target SSH server (e.g., `npx sshifu-trust sshifu-server.com`)
+3. **User can connect to ssh-server via sshifu-server** - Authenticate and connect (e.g., `npx sshifu sshifu-server.com ssh-server.com`)
+
 ## Quick Start
 
 ```bash
