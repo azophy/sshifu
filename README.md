@@ -4,9 +4,11 @@
   <img src="logo.png" alt="Sshifu Logo" width="250px">
 </div>
 
-**Sshifu** (SSH + Fu / 師傅 "master") helps you log in to SSH with SSO.
+**Sshifu** helps you log in to SSH with SSO.
 
 It issues short-lived **OpenSSH certificates** after users authenticate with an OAuth provider (currently **GitHub Organizations**), so you can stop distributing and cleaning up long-lived public keys.
+
+## Problem Statement
 
 SSH access is ubiquitous, but managing `authorized_keys` at scale is painful:
 
@@ -27,6 +29,8 @@ The diagram above shows the three-step setup process:
 1. **Setup sshifu server** - Start the sshifu-server (e.g., `npx sshifu-server`)
 2. **Setup SSH server to trust sshifu server** - Configure trust on the target SSH server (e.g., `npx sshifu-trust sshifu-server.com`)
 3. **User can connect to ssh-server via sshifu-server** - Authenticate and connect (e.g., `npx sshifu sshifu-server.com ssh-server.com`)
+
+detailed flow see [Authentication Flow](#authentication-flow) Section below
 
 ## Quick Start
 
@@ -60,45 +64,41 @@ npx sshifu <localhost.run address> <ssh server address>
 For frequent use, install globally:
 
 ```bash
-npm install -g sshifu
+npm install -g sshifu sshifu-server sshifu-trust
 ```
 
 Then use commands directly:
 
 ```bash
-sshifu auth.example.com user@target-server.com
+sshifu auth.example.com target-server.com
 sshifu-server
 sshifu-trust auth.example.com
 ```
 
 #### Option 2: Pre-built Binary
 
-Download the latest release for your platform from the [releases page](https://github.com/azophy/sshifu/releases):
+Download the latest release for your platform from the [releases page](https://github.com/azophy/sshifu/releases) and put the binaries in your `PATH`.
+
+#### Option 3: Install via `go install`
+
+Requires Go 1.25+. Make sure `$(go env GOPATH)/bin` is in your `PATH`.
 
 ```bash
-# Linux (amd64)
-curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-linux-amd64.tar.gz | tar xz
-sudo mv sshifu* /usr/local/bin/
+# Install from a local clone:
+go install ./cmd/...
 
-# macOS (Intel)
-curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-darwin-amd64.tar.gz | tar xz
-sudo mv sshifu* /usr/local/bin/
-
-# macOS (Apple Silicon)
-curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-darwin-arm64.tar.gz | tar xz
-sudo mv sshifu* /usr/local/bin/
-
-# Windows (amd64)
-curl -L https://github.com/azophy/sshifu/releases/latest/download/sshifu-windows-amd64.zip -o sshifu.zip
-unzip sshifu.zip
-# Move sshifu.exe to a directory in your PATH
+# Or install directly from GitHub:
+go install github.com/azophy/sshifu/cmd/sshifu@latest
+go install github.com/azophy/sshifu/cmd/sshifu-server@latest
+go install github.com/azophy/sshifu/cmd/sshifu-trust@latest
 ```
 
-#### Option 3: Build from Source
+#### Option 4: Build from Source
 
 Requires Go 1.25+:
 
 ```bash
+# after cloning this repo
 go build ./cmd/sshifu
 go build ./cmd/sshifu-server
 go build ./cmd/sshifu-trust
@@ -273,3 +273,7 @@ The following features are intentionally out of scope for the initial release:
 ## Contributing
 
 Contributions are welcome! Please read the contributing guidelines before submitting pull requests.
+
+## Disclaimer
+
+This repo is **99% vibe-coded**. Use at your own risk.
