@@ -4,17 +4,19 @@
   <img src="logo.png" alt="Sshifu Logo" width="250px">
 </div>
 
-**Sshifu** (SSH + Fu / 師傅 "master") is a lightweight SSH authentication system that uses short-lived OpenSSH certificates with OAuth authentication (GitHub organizations).
+**Sshifu** (SSH + Fu / 師傅 "master") helps you log in to SSH with SSO.
 
-A minimal alternative to complex SSH access platforms like Teleport, while remaining fully compatible with existing OpenSSH tooling.
+It issues short-lived **OpenSSH certificates** after users authenticate with an OAuth provider (currently **GitHub Organizations**), so you can stop distributing and cleaning up long-lived public keys.
 
-## Features
+SSH access is ubiquitous, but managing `authorized_keys` at scale is painful:
 
-- 🔐 **Short-lived SSH certificates** - Automatic certificate issuance with configurable TTL (default 8 hours)
-- 🌐 **GitHub OAuth authentication** - Authenticate users via GitHub organization membership
-- 🛠️ **Standard OpenSSH compatibility** - Works with existing `ssh` command without workflow changes
-- 📦 **Minimal infrastructure** - Single server component, no database required
-- 👥 **Designed for small teams** - Optimized for teams with <50 users
+- Getting access often means copying keys around by hand
+- Offboarding is risky (keys get forgotten)
+- Auditing who can access what is harder than it should be
+
+SSO-based SSH access is a better model, but existing platforms like **Teleport** or **Smallstep** can be heavy and come with a steep learning curve.
+
+Sshifu aims to be the minimal, OpenSSH-compatible alternative: a small server that acts as an OAuth gateway + SSH CA, plus two tiny CLIs to set up trust and connect.
 
 ## How Sshifu Works
 
