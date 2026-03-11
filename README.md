@@ -43,33 +43,6 @@ sudo npx sshifu-trust <localhost.run address>
 npx sshifu <localhost.run address> <ssh server address>
 ```
 
-## Architecture
-
-```
-┌─────────────┐
-│ User CLI    │  sshifu
-│ (sshifu)    │
-└──────┬──────┘
-       │
-       │ 1. Start login session
-       │ 2. Poll for approval
-       │ 3. Request certificate
-       ▼
-┌─────────────────────────┐
-│ sshifu-server           │
-│ - OAuth gateway         │
-│ - SSH Certificate Auth  │
-└─────────────────────────┘
-       │
-       │ Configure trust
-       ▼
-┌─────────────────────────┐
-│ Target SSH Server       │
-│ (configured via         │
-│  sshifu-trust)          │
-└─────────────────────────┘
-```
-
 ## Components
 
 | Tool | Purpose |
@@ -148,45 +121,28 @@ To configure OAuth authentication with GitHub, you need to create a GitHub OAuth
 
 ## Authentication Flow
 
-```
-┌──────────┐                    ┌───────────────┐                    ┌──────────┐
-│  sshifu  │                    │ sshifu-server │                    │  GitHub  │
-└────┬─────┘                    └───────┬───────┘                    └────┬─────┘
-     │                                  │                                  │
-     │  POST /api/v1/login/start        │                                  │
-     │─────────────────────────────────>│                                  │
-     │                                  │                                  │
-     │  session_id, login_url           │                                  │
-     │<─────────────────────────────────│                                  │
-     │                                  │                                  │
-     │  [Display login URL to user]     │                                  │
-     │                                  │                                  │
-     │                                  │  [User opens URL in browser]     │
-     │                                  │                                  │
-     │                                  │  Redirect to GitHub OAuth        │
-     │                                  │─────────────────────────────────>│
-     │                                  │                                  │
-     │                                  │  User authenticates              │
-     │                                  │<─────────────────────────────────│
-     │                                  │                                  │
-     │                                  │  Verify org membership           │
-     │                                  │─────────────────────────────────>│
-     │                                  │                                  │
-     │  GET /api/v1/login/status        │  Session approved                │
-     │─────────────────────────────────>│                                  │
-     │                                  │                                  │
-     │  status: approved, access_token  │                                  │
-     │<─────────────────────────────────│                                  │
-     │                                  │                                  │
-     │  POST /api/v1/sign/user          │                                  │
-     │─────────────────────────────────>│                                  │
-     │                                  │                                  │
-     │  SSH certificate                 │                                  │
-     │<─────────────────────────────────│                                  │
-     │                                  │                                  │
-     │  ssh -o CertificateFile=<cert>   │                                  │
-     │─────────────────────────────────>│                                  │
-     │         [SSH connection established]                                  │
+```mermaid
+sequenceDiagram
+    participant User as User CLI (sshifu)
+    participant Server as sshifu-server
+    participant GitHub as GitHub OAuth
+    participant SSH as Target SSH Server
+
+    User->>Server: POST /api/v1/login/start
+    Server-->>User: session_id, login_url
+    User->>User: Display login URL
+    User->>Server: Open login URL in browser
+    Server->>GitHub: Redirect to GitHub OAuth
+    User->>GitHub: Authenticate
+    GitHub-->>Server: OAuth callback with code
+    Server->>GitHub: Verify org membership
+    GitHub-->>Server: User info
+    User->>Server: GET /api/v1/login/status
+    Server-->>User: status: approved, access_token
+    User->>Server: POST /api/v1/sign/user
+    Server-->>User: SSH certificate
+    User->>SSH: ssh -o CertificateFile=<cert>
+    Note over SSH: SSH connection established
 ```
 
 ## Configuration
@@ -226,8 +182,22 @@ sshifu/
 │   ├── session/         # Login session management
 │   └── ssh/             # SSH utilities
 ├── web/                 # Web frontend (login pages)
+├── docs/                # Documentation
+│   ├── api/             # API documentation
+│   ├── guides/          # User guides
+│   └── reference/       # Reference documentation
+├── e2e/                 # End-to-end tests
+├── packages/            # NPM packages
+│   ├── sshifu/          # NPM package for user CLI
+│   ├── sshifu-server/   # NPM package for server
+│   └── sshifu-trust/    # NPM package for trust setup
+├── scripts/             # Build and utility scripts
+├── bin/                 # Compiled binaries
+├── .github/             # GitHub workflows and templates
 ├── config.example.yml   # Example configuration
-└── go.mod
+├── go.mod               # Go module definition
+├── go.sum               # Go module checksums
+└── package.json         # NPM package configuration
 ```
 
 ## Testing
