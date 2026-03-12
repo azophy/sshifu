@@ -254,6 +254,44 @@ auth:
       allowed_org: test-org
 ```
 
+### Testing the Install Script
+
+The install script (`scripts/install.sh`) supports multiple platforms and configurations:
+
+```bash
+# Test on Linux (all apps)
+./scripts/install.sh
+
+# Test single app installation
+INSTALL_APP=sshifu ./scripts/install.sh
+
+# Test multiple apps
+INSTALL_APP=sshifu,sshifu-server ./scripts/install.sh
+
+# Test specific version
+INSTALL_VERSION=0.6.3 ./scripts/install.sh
+
+# Test custom prefix
+INSTALL_PREFIX=/tmp/sshifu-test ./scripts/install.sh
+
+# Test with CLI flags
+./scripts/install.sh --app sshifu --version 0.6.3 --prefix /tmp/sshifu-test
+
+# Test verbose output
+INSTALL_VERBOSE=1 ./scripts/install.sh
+
+# Test no PATH modification
+INSTALL_NO_PATH=1 ./scripts/install.sh
+
+# Test help
+./scripts/install.sh --help
+```
+
+**Platform-specific notes:**
+- Linux/macOS: Downloads `.tar.gz` archives
+- Windows (WSL/Git Bash): Downloads `.zip` archives
+- Architecture auto-detection: `amd64`, `arm64`, `arm`
+
 ---
 
 ## Code Structure

@@ -67,19 +67,34 @@ For frequent use, install globally:
 npm install -g sshifu sshifu-server sshifu-trust
 ```
 
-Then use commands directly:
+#### Option 2: Install via Script (Recommended)
+
+Automatically detects your OS/architecture and installs the latest release:
 
 ```bash
-sshifu auth.example.com target-server.com
-sshifu-server
-sshifu-trust auth.example.com
+# Install all tools (sshifu, sshifu-server, sshifu-trust)
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/scripts/install.sh | bash
+
+# Install specific tool
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/scripts/install.sh | INSTALL_APP=sshifu bash
+
+# Install specific version
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/scripts/install.sh | INSTALL_VERSION=0.6.3 bash
+
+# Custom install location
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/scripts/install.sh | INSTALL_PREFIX=/opt/sshifu bash
+
+# System-wide install (requires sudo)
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/scripts/install.sh | sudo bash -s -- --system
 ```
 
-#### Option 2: Pre-built Binary
+For all options, run: `curl ... | bash -s -- --help`
+
+#### Option 3: Pre-built Binary
 
 Download the latest release for your platform from the [releases page](https://github.com/azophy/sshifu/releases) and put the binaries in your `PATH`.
 
-#### Option 3: Install via `go install`
+#### Option 4: Install via `go install`
 
 Requires Go 1.25+. Make sure `$(go env GOPATH)/bin` is in your `PATH`.
 
@@ -93,7 +108,7 @@ go install github.com/azophy/sshifu/cmd/sshifu-server@latest
 go install github.com/azophy/sshifu/cmd/sshifu-trust@latest
 ```
 
-#### Option 4: Build from Source
+#### Option 5: Build from Source
 
 Requires Go 1.25+:
 
