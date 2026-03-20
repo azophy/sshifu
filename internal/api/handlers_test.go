@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/azophy/sshifu/internal/cert"
+	"github.com/azophy/sshifu/internal/oauth"
 	"github.com/azophy/sshifu/internal/session"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/oauth2"
@@ -66,18 +67,19 @@ func getTestCA() (ssh.Signer, error) {
 func TestLoginStart(t *testing.T) {
 	store := session.NewStore(15 * time.Minute)
 	provider := &mockOAuthProvider{name: "github", authURL: "https://github.com/oauth"}
-	
+
 	caSigner, err := getTestCA()
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
-	
+
 	handlerCfg := &Config{
 		TTL:        8 * time.Hour,
 		Extensions: map[string]bool{},
 	}
-	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+
+	providers := map[string]oauth.Provider{"github": provider}
+	handler, err := NewHandler(store, providers, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -121,7 +123,7 @@ func TestLoginStartWrongMethod(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -150,7 +152,7 @@ func TestLoginStatus(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -191,7 +193,7 @@ func TestLoginStatusApproved(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -236,7 +238,7 @@ func TestLoginStatusNotFound(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -265,7 +267,7 @@ func TestCAPublicKey(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -317,7 +319,7 @@ func TestLoginTemplateExists(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Fatalf("Failed to create handler: %v", err)
 	}
@@ -355,7 +357,7 @@ func TestSignUserCertificate(t *testing.T) {
 		},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -414,7 +416,7 @@ func TestSignUserCertificateInvalidToken(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -457,7 +459,7 @@ func TestSignUserCertificateMissingFields(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -493,7 +495,7 @@ func TestSignHostCertificate(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -548,7 +550,7 @@ func TestSignHostCertificateMissingFields(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}
@@ -584,7 +586,7 @@ func TestSignHostCertificateWrongMethod(t *testing.T) {
 		Extensions: map[string]bool{},
 	}
 	
-	handler, err := NewHandler(store, provider, caSigner, handlerCfg, "http://localhost:8080")
+	handler, err := NewHandler(store, map[string]oauth.Provider{"github": provider}, caSigner, handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Skipf("Skipping test: %v", err)
 	}

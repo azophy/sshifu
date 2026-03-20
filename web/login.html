@@ -87,12 +87,14 @@
     <div class="container">
         <div class="logo">🔐</div>
         <h1>Sshifu Authentication</h1>
-        <p>Sign in with GitHub to obtain an SSH certificate for secure access.</p>
-        
-        <a href="/oauth/github/{{.SessionID}}" class="btn">
-            Sign in with GitHub
+        <p>Sign in to obtain an SSH certificate for secure access.</p>
+
+        {{range .Providers}}
+        <a href="{{.url}}" class="btn">
+            Sign in with {{.name}}
         </a>
-        
+        {{end}}
+
         <div class="status pending" id="status">
             <span class="spinner"></span>
             Waiting for authentication...

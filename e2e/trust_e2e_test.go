@@ -52,7 +52,8 @@ func TestSshifuTrustE2E(t *testing.T) {
 		},
 	}
 
-	handler, err := api.NewHandler(sessionStore, mockOAuth, caSigner.Signer(), handlerCfg, "http://localhost:8080")
+	providers := map[string]oauth.Provider{"github": mockOAuth}
+	handler, err := api.NewHandler(sessionStore, providers, caSigner.Signer(), handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Fatalf("Failed to create handler: %v", err)
 	}
@@ -225,7 +226,8 @@ func TestHostCertificateValidation(t *testing.T) {
 		Extensions: map[string]bool{"permit-pty": true},
 	}
 
-	handler, err := api.NewHandler(sessionStore, mockOAuth, caSigner.Signer(), handlerCfg, "http://localhost:8080")
+	providers := map[string]oauth.Provider{"github": mockOAuth}
+	handler, err := api.NewHandler(sessionStore, providers, caSigner.Signer(), handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Fatalf("Failed to create handler: %v", err)
 	}
@@ -334,7 +336,8 @@ func TestCAKeyDistribution(t *testing.T) {
 		Extensions: map[string]bool{"permit-pty": true},
 	}
 
-	handler, err := api.NewHandler(sessionStore, mockOAuth, caSigner.Signer(), handlerCfg, "http://localhost:8080")
+	providers := map[string]oauth.Provider{"github": mockOAuth}
+	handler, err := api.NewHandler(sessionStore, providers, caSigner.Signer(), handlerCfg, "http://localhost:8080")
 	if err != nil {
 		t.Fatalf("Failed to create handler: %v", err)
 	}

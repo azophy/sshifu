@@ -86,22 +86,37 @@ func main() {
 	sessionStore := session.NewStore(15 * time.Minute)
 	fmt.Println("✓ Session store initialized")
 
-	// Find and initialize OAuth provider
-	var oauthProvider oauth.Provider
+	// Initialize OAuth providers
+	oauthProviders := make(map[string]oauth.Provider)
 	for _, p := range cfg.Auth.Providers {
-		if p.Type == "github" {
-			oauthProvider = oauth.NewGitHubProvider(
+		switch p.Type {
+		case "github":
+			oauthProviders[p.Name] = oauth.NewGitHubProvider(
 				p.ClientID,
 				p.ClientSecret,
 				cfg.Server.PublicURL+"/oauth/callback",
 				p.AllowedOrg,
 			)
-			fmt.Printf("✓ OAuth provider initialized: %s\n", p.Name)
-			break
+			fmt.Printf("✓ OAuth provider initialized: %s (github)\n", p.Name)
+		case "oidc":
+			provider, err := oauth.NewOIDCProvider(
+				p.Issuer,
+				p.ClientID,
+				p.ClientSecret,
+				cfg.Server.PublicURL+"/oauth/callback",
+				p.PrincipalOAuthFieldName,
+			)
+			if err != nil {
+				log.Fatalf("Failed to initialize OIDC provider %s: %v", p.Name, err)
+			}
+			oauthProviders[p.Name] = provider
+			fmt.Printf("✓ OAuth provider initialized: %s (oidc)\n", p.Name)
+		default:
+			log.Printf("⚠️  Unknown provider type %q for %s, skipping", p.Type, p.Name)
 		}
 	}
 
-	if oauthProvider == nil {
+	if len(oauthProviders) == 0 {
 		log.Fatal("No supported OAuth provider configured")
 	}
 
@@ -118,8 +133,8 @@ func main() {
 		Extensions: cfg.Cert.Extensions,
 	}
 
-	// Initialize API handler
-	handler, err := api.NewHandler(sessionStore, oauthProvider, ca.Signer(), handlerCfg, cfg.Server.PublicURL)
+	// Initialize API handler with all providers
+	handler, err := api.NewHandler(sessionStore, oauthProviders, ca.Signer(), handlerCfg, cfg.Server.PublicURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize API handler: %v", err)
 	}
@@ -138,7 +153,8 @@ func main() {
 
 	// OAuth routes
 	mux.HandleFunc("/oauth/callback", handler.OAuthCallback)
-	mux.HandleFunc("/oauth/github/", handler.OAuthInit)
+	// Dynamic OAuth init route: /oauth/init/{provider_name}/{session_id}
+	mux.HandleFunc("/oauth/init/", handler.OAuthInit)
 
 	// Login page
 	mux.HandleFunc("/login/", handler.Login)

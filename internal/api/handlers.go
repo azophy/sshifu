@@ -14,12 +14,13 @@ import (
 	"github.com/azophy/sshifu/internal/oauth"
 	"github.com/azophy/sshifu/internal/session"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/oauth2"
 )
 
 // Handler manages HTTP request handling
 type Handler struct {
 	sessionStore  *session.Store
-	oauthProvider oauth.Provider
+	oauthProviders map[string]oauth.Provider
 	caSigner      ssh.Signer
 	config        *Config
 	publicURL     string
@@ -33,7 +34,7 @@ type Config struct {
 }
 
 // NewHandler creates a new API handler
-func NewHandler(store *session.Store, provider oauth.Provider, caSigner ssh.Signer, cfg *Config, publicURL string) (*Handler, error) {
+func NewHandler(store *session.Store, providers map[string]oauth.Provider, caSigner ssh.Signer, cfg *Config, publicURL string) (*Handler, error) {
 	// Try multiple paths for the template (handles different working directories)
 	var tmpl *template.Template
 	var err error
@@ -53,12 +54,12 @@ func NewHandler(store *session.Store, provider oauth.Provider, caSigner ssh.Sign
 	}
 
 	return &Handler{
-		sessionStore:  store,
-		oauthProvider: provider,
-		caSigner:      caSigner,
-		config:        cfg,
-		publicURL:     publicURL,
-		loginTemplate: tmpl,
+		sessionStore:   store,
+		oauthProviders: providers,
+		caSigner:       caSigner,
+		config:         cfg,
+		publicURL:      publicURL,
+		loginTemplate:  tmpl,
 	}, nil
 }
 
@@ -147,8 +148,20 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build provider list with their init URLs
+	providers := make([]map[string]string, 0, len(h.oauthProviders))
+	for name := range h.oauthProviders {
+		providers = append(providers, map[string]string{
+			"name": name,
+			"url":  h.publicURL + "/oauth/init/" + name + "/" + sessionID,
+		})
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.loginTemplate.Execute(w, map[string]string{"SessionID": sessionID}); err != nil {
+	if err := h.loginTemplate.Execute(w, map[string]interface{}{
+		"SessionID": sessionID,
+		"Providers": providers,
+	}); err != nil {
 		log.Printf("Failed to execute template: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
@@ -188,25 +201,34 @@ func (h *Handler) OAuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Exchange code for token
 	ctx := r.Context()
-	token, err := h.oauthProvider.Exchange(ctx, code)
-	if err != nil {
-		log.Printf("Failed to exchange code: %v", err)
-		http.Error(w, "Failed to exchange authorization code", http.StatusInternalServerError)
-		return
+	var token *oauth2.Token
+	var username string
+	var err error
+	var usedProvider oauth.Provider
+
+	// Try all providers until one succeeds
+	for _, provider := range h.oauthProviders {
+		token, err = provider.Exchange(ctx, code)
+		if err != nil {
+			continue // Try next provider
+		}
+
+		username, err = provider.GetUsername(ctx, token)
+		if err != nil {
+			continue
+		}
+
+		if err := provider.VerifyMembership(ctx, token, username); err != nil {
+			continue
+		}
+
+		usedProvider = provider
+		break
 	}
 
-	// Get username
-	username, err := h.oauthProvider.GetUsername(ctx, token)
-	if err != nil {
-		log.Printf("Failed to get username: %v", err)
-		http.Error(w, "Failed to retrieve user information", http.StatusInternalServerError)
-		return
-	}
-
-	// Verify org membership
-	if err := h.oauthProvider.VerifyMembership(ctx, token, username); err != nil {
-		log.Printf("Membership verification failed: %v", err)
-		http.Error(w, "Access denied: not a member of required organization", http.StatusForbidden)
+	if token == nil || usedProvider == nil {
+		log.Printf("All providers failed to exchange code or verify user: %v", err)
+		http.Error(w, "Failed to authenticate with any configured provider", http.StatusInternalServerError)
 		return
 	}
 
@@ -231,29 +253,41 @@ func (h *Handler) OAuthCallback(w http.ResponseWriter, r *http.Request) {
 </html>`))
 }
 
-// OAuthInit handles GET /oauth/github/{session_id} - initiates OAuth flow
+// OAuthInit handles GET /oauth/init/{provider_name}/{session_id} - initiates OAuth flow
 func (h *Handler) OAuthInit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	// Extract session ID from URL path
-	sessionID := strings.TrimPrefix(r.URL.Path, "/oauth/github/")
-	if sessionID == "" {
-		http.Error(w, "Missing session ID", http.StatusBadRequest)
+	// Extract provider name and session ID from URL path
+	// Path format: /oauth/init/{provider_name}/{session_id}
+	path := strings.TrimPrefix(r.URL.Path, "/oauth/init/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		http.Error(w, "Invalid path. Expected: /oauth/init/{provider_name}/{session_id}", http.StatusBadRequest)
+		return
+	}
+
+	providerName := parts[0]
+	sessionID := parts[1]
+
+	// Get the provider
+	provider, exists := h.oauthProviders[providerName]
+	if !exists {
+		http.Error(w, "Unknown OAuth provider: "+providerName, http.StatusNotFound)
 		return
 	}
 
 	// Verify session exists
-	_, exists := h.sessionStore.Get(sessionID)
+	_, exists = h.sessionStore.Get(sessionID)
 	if !exists {
 		http.Error(w, "Session not found or expired", http.StatusNotFound)
 		return
 	}
 
 	// Redirect to OAuth provider
-	authURL := h.oauthProvider.AuthURL(sessionID)
+	authURL := provider.AuthURL(sessionID)
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
