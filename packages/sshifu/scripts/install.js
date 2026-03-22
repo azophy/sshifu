@@ -95,14 +95,28 @@ async function main() {
     const archiveBinName = `${PACKAGE_NAME}-${platform}${isWindows ? '.exe' : ''}`;
     const extractedPath = path.join(binDir, archiveBinName);
     if (isWindows) {
-      execSync(`powershell -Command "Expand-Archive -Path '${archivePath}' -DestinationPath '${binDir}' -Force"`, { stdio: 'ignore' });
+      execSync(`powershell -Command "Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${binDir.replace(/'/g, "''")}' -Force"`, { stdio: 'ignore' });
     } else {
       execSync(`tar -xzf "${archivePath}" -C "${binDir}"`, { stdio: 'ignore' });
     }
 
     // Rename to expected name if different
-    if (archiveBinName !== binName && fs.existsSync(extractedPath)) {
-      fs.renameSync(extractedPath, binPath);
+    console.log(`[sshifu] Looking for binary at: ${extractedPath}`);
+    console.log(`[sshifu] Target path: ${binPath}`);
+    if (archiveBinName !== binName) {
+      if (fs.existsSync(extractedPath)) {
+        console.log(`[sshifu] Renaming ${archiveBinName} to ${binName}`);
+        fs.renameSync(extractedPath, binPath);
+      } else {
+        // Try to find the extracted file (in case of path issues)
+        const files = fs.readdirSync(binDir);
+        console.log(`[sshifu] Files in binDir: ${files.join(', ')}`);
+        const exeFile = files.find(f => f.endsWith('.exe') && f.startsWith(PACKAGE_NAME));
+        if (exeFile) {
+          console.log(`[sshifu] Found ${exeFile}, renaming to ${binName}`);
+          fs.renameSync(path.join(binDir, exeFile), binPath);
+        }
+      }
     }
 
     // Make executable on Unix
