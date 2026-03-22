@@ -90,6 +90,9 @@ async function main() {
   try {
     await download(archiveUrl, archivePath);
 
+    // Small delay to ensure file handle is released
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // Extract the archive
     console.log(`[sshifu-trust] Extracting...`);
     const archiveBinName = `${PACKAGE_NAME}-${platform}${isWindows ? '.exe' : ''}`;
