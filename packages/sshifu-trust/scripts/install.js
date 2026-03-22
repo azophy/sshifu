@@ -79,20 +79,26 @@ async function main() {
     return;
   }
   
-  const archiveName = `${PACKAGE_NAME}-${platform}.tar.gz`;
+  const isWindows = process.platform === 'win32';
+  const archiveExt = isWindows ? '.zip' : '.tar.gz';
+  const archiveName = `${PACKAGE_NAME}-${platform}${archiveExt}`;
   const archiveUrl = `https://github.com/${REPO}/releases/download/v${version}/${archiveName}`;
   const archivePath = path.join(binDir, archiveName);
-  
+
   console.log(`[sshifu-trust] Downloading ${archiveUrl}...`);
-  
+
   try {
     await download(archiveUrl, archivePath);
 
     // Extract the archive
     console.log(`[sshifu-trust] Extracting...`);
-    const archiveBinName = `${PACKAGE_NAME}-${platform}${process.platform === 'win32' ? '.exe' : ''}`;
+    const archiveBinName = `${PACKAGE_NAME}-${platform}${isWindows ? '.exe' : ''}`;
     const extractedPath = path.join(binDir, archiveBinName);
-    execSync(`tar -xzf "${archivePath}" -C "${binDir}"`, { stdio: 'ignore' });
+    if (isWindows) {
+      execSync(`powershell -Command "Expand-Archive -Path '${archivePath}' -DestinationPath '${binDir}' -Force"`, { stdio: 'ignore' });
+    } else {
+      execSync(`tar -xzf "${archivePath}" -C "${binDir}"`, { stdio: 'ignore' });
+    }
 
     // Rename to expected name if different
     if (archiveBinName !== binName && fs.existsSync(extractedPath)) {
