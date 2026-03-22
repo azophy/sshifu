@@ -136,7 +136,19 @@ To configure OAuth authentication with GitHub, you need to create a GitHub OAuth
 
 > ⚠️ **Important**: The client secret is only shown once. Store it securely and never commit it to version control.
 
-For OIDC providers (Google, Okta, Auth0, etc.), see the [OAuth Provider Configuration Guide](docs/guides/oauth-providers.md).
+### OIDC Providers (Authentik, Google, Okta, etc.)
+
+For OIDC provider setup, see the complete [Authentik Integration Guide](docs/guides/authentik-setup.md) for a step-by-step tutorial.
+
+SSHifu supports any OpenID Connect-compatible provider including:
+- **Authentik** (self-hosted, recommended)
+- Google Workspace
+- Okta
+- Auth0
+- Keycloak
+- Microsoft Entra ID (Azure AD)
+
+For detailed OAuth configuration, see the [OAuth Provider Configuration Guide](docs/guides/oauth-providers.md).
 
 ## Authentication Flow
 
@@ -165,7 +177,9 @@ sequenceDiagram
     Note over SSH: SSH connection established
 ```
 
-For detailed OAuth flow documentation, see [OAuth Provider Configuration Guide](docs/guides/oauth-providers.md).
+For detailed OAuth flow documentation, see:
+- [OAuth Provider Configuration Guide](docs/guides/oauth-providers.md) - Complete OAuth/OIDC reference
+- [Authentik Integration Guide](docs/guides/authentik-setup.md) - Step-by-step OIDC setup tutorial
 
 ## Configuration
 
