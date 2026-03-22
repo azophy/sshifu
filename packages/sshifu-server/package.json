@@ -1,6 +1,6 @@
 {
   "name": "sshifu-server",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "SSH authentication server with OAuth gateway and certificate authority",
   "main": "bin/sshifu-server.js",
   "bin": {

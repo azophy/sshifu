@@ -1,6 +1,6 @@
 {
   "name": "sshifu-trust",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "Configure SSH servers to trust sshifu certificate authority",
   "main": "bin/sshifu-trust.js",
   "bin": {
