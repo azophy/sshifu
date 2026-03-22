@@ -88,22 +88,22 @@ jobs:
           path: dist/
           merge-multiple: true
 
-      - name: Create draft release
+      - name: Create test release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.build.outputs.version }}
-          name: Test Release v${{ needs.build.outputs.version }}
-          draft: true
+          name: TEST RELEASE v${{ needs.build.outputs.version }}
+          draft: false
           prerelease: true
           files: dist/*
           generate_release_notes: false
           body: |
-            **TEST RELEASE - DO NOT USE IN PRODUCTION**
-
+            **⚠️ TEST RELEASE - DO NOT USE IN PRODUCTION ⚠️**
+            
             Built from branch: `${{ github.event.inputs.ref }}`
-
+            
             Purpose: Testing Windows npm install fix
-
+            
             This release will be deleted after testing.
 
   publish-npm:
