@@ -78,7 +78,7 @@ jobs:
   create-test-release:
     name: Create Test Release
     needs: build
-    if: ${{ github.event.inputs.create-release == 'true' }}
+    if: ${{ github.event.inputs.create_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
