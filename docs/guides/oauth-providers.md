@@ -131,12 +131,15 @@ Users must be members of the configured `allowed_org`. Membership is verified on
 
 1. **Choose OIDC Provider**
 
-   Common providers:
+   SSHifu works with any OpenID Connect-compatible provider:
+   - **Authentik** (self-hosted, recommended)
    - Google Workspace
    - Okta
    - Auth0
-   - Keycloak (self-hosted)
+   - Keycloak
    - Microsoft Entra ID (Azure AD)
+
+   For a complete step-by-step guide with Authentik, see [Authentik Integration Guide](authentik-setup.md).
 
 2. **Register OAuth Client**
 
@@ -151,12 +154,12 @@ Users must be members of the configured `allowed_org`. Membership is verified on
    ```yaml
    auth:
      providers:
-       - name: google
+       - name: authentik
          type: oidc
-         issuer: https://accounts.google.com
-         client_id: YOUR_CLIENT_ID.apps.googleusercontent.com
+         issuer: https://auth.example.com/application/o/sshifu/
+         client_id: YOUR_CLIENT_ID
          client_secret: YOUR_CLIENT_SECRET
-         principal_oauth_field_name: email
+         principal_oauth_field_name: preferred_username
    ```
 
 ### Configuration Fields
@@ -181,10 +184,10 @@ GET {issuer}/.well-known/openid-configuration
 Returns:
 ```json
 {
-  "issuer": "https://accounts.google.com",
-  "authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
-  "token_endpoint": "https://oauth2.googleapis.com/token",
-  "userinfo_endpoint": "https://openidconnect.googleapis.com/v1/userinfo",
+  "issuer": "https://auth.example.com/application/o/sshifu/",
+  "authorization_endpoint": "https://auth.example.com/application/o/sshifu/authorize/",
+  "token_endpoint": "https://auth.example.com/application/o/sshifu/token/",
+  "userinfo_endpoint": "https://auth.example.com/application/o/sshifu/userinfo/",
   ...
 }
 ```
@@ -194,11 +197,11 @@ Returns:
 The `principal_oauth_field_name` specifies which OIDC claim to use as the SSH username:
 
 ```yaml
-# Use email (without @domain)
-principal_oauth_field_name: email
-
 # Use preferred username (default)
 principal_oauth_field_name: preferred_username
+
+# Use email (without @domain)
+principal_oauth_field_name: email
 
 # Use subject ID
 principal_oauth_field_name: sub
@@ -207,59 +210,20 @@ principal_oauth_field_name: sub
 principal_oauth_field_name: custom_username
 ```
 
-### Provider-Specific Examples
-
-#### Google Workspace
+### Example Configuration
 
 ```yaml
 auth:
   providers:
-    - name: google
+    - name: authentik
       type: oidc
-      issuer: https://accounts.google.com
-      client_id: YOUR_CLIENT_ID.apps.googleusercontent.com
-      client_secret: YOUR_CLIENT_SECRET
-      principal_oauth_field_name: email
-```
-
-#### Okta
-
-```yaml
-auth:
-  providers:
-    - name: okta
-      type: oidc
-      issuer: https://your-org.okta.com/oauth2/default
-      client_id: 0oa1234567890abcdef
-      client_secret: YOUR_CLIENT_SECRET
+      issuer: https://auth.example.com/application/o/sshifu/
+      client_id: abc123def456
+      client_secret: secret789xyz
       principal_oauth_field_name: preferred_username
 ```
 
-#### Auth0
-
-```yaml
-auth:
-  providers:
-    - name: auth0
-      type: oidc
-      issuer: https://your-domain.auth0.com
-      client_id: YOUR_CLIENT_ID
-      client_secret: YOUR_CLIENT_SECRET
-      principal_oauth_field_name: nickname
-```
-
-#### Keycloak
-
-```yaml
-auth:
-  providers:
-    - name: keycloak
-      type: oidc
-      issuer: https://keycloak.example.com/realms/myrealm
-      client_id: sshifu
-      client_secret: YOUR_CLIENT_SECRET
-      principal_oauth_field_name: preferred_username
-```
+For detailed Authentik setup instructions, including Docker deployment and provider configuration, see the [Authentik Integration Guide](authentik-setup.md).
 
 ---
 
@@ -284,13 +248,13 @@ auth:
       client_secret: secret456
       allowed_org: company-contractors
 
-    # Google Workspace
-    - name: google
+    # Authentik OIDC
+    - name: authentik
       type: oidc
-      issuer: https://accounts.google.com
-      client_id: CLIENT_ID.apps.googleusercontent.com
-      client_secret: secret789
-      principal_oauth_field_name: email
+      issuer: https://auth.example.com/application/o/sshifu/
+      client_id: CLIENT_ID
+      client_secret: CLIENT_SECRET
+      principal_oauth_field_name: preferred_username
 ```
 
 ### Login Experience
@@ -305,7 +269,7 @@ When multiple providers are configured:
 ### Use Cases
 
 - **Multiple GitHub orgs**: Main company + contractors
-- **Hybrid identity**: GitHub for devs, Google for ops
+- **Hybrid identity**: GitHub for devs, Authentik for ops
 - **Migrations**: Run old and new providers in parallel
 - **Redundancy**: Backup auth method
 
@@ -454,6 +418,7 @@ curl https://your-issuer.com/.well-known/openid-configuration | jq
 
 ## Next Steps
 
+- [Authentik Integration Guide](authentik-setup.md) - Complete OIDC setup tutorial
 - [Server Setup Guide](server-setup.md) - Deploy sshifu-server
 - [Configuration Reference](../reference/configuration.md) - All config options
 - [API Reference](../api/README.md) - OAuth API endpoints
