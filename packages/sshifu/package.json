@@ -1,6 +1,6 @@
 {
   "name": "sshifu",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "SSH authentication system with short-lived certificates and OAuth authentication (GitHub organizations)",
   "main": "bin/sshifu.js",
   "bin": {
