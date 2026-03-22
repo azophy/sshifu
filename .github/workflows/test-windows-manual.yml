@@ -99,11 +99,11 @@ jobs:
           generate_release_notes: false
           body: |
             **TEST RELEASE - DO NOT USE IN PRODUCTION**
-            
+
             Built from branch: `${{ github.event.inputs.ref }}`
-            
+
             Purpose: Testing Windows npm install fix
-            
+
             This release will be deleted after testing.
 
   publish-npm:
@@ -133,37 +133,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm publish --workspaces --access public --tag ${{ github.event.inputs.npm_tag }}
-
-  create-test-release:
-    name: Create Test Release
-    needs: build
-    if: ${{ github.event.inputs.create-release == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: '*-binaries'
-          path: dist/
-          merge-multiple: true
-
-      - name: Create draft release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.build.outputs.version }}
-          name: Test Release v${{ needs.build.outputs.version }}
-          draft: true
-          prerelease: true
-          files: dist/*
-          generate_release_notes: false
-          body: |
-            **TEST RELEASE - DO NOT USE IN PRODUCTION**
-            
-            Built from branch: `${{ github.event.inputs.ref }}`
-            
-            Purpose: Testing Windows npm install fix
-            
-            This release will be deleted after testing.
 
   test-all:
     name: Run Full Test Suite
