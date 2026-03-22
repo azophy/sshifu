@@ -90,27 +90,47 @@ async function main() {
   try {
     await download(archiveUrl, archivePath);
 
-    // Small delay to ensure file handle is released
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     // Extract the archive
     console.log(`[sshifu-trust] Extracting...`);
     const archiveBinName = `${PACKAGE_NAME}-${platform}${isWindows ? '.exe' : ''}`;
     const extractedPath = path.join(binDir, archiveBinName);
     if (isWindows) {
-      try {
-        // Use PowerShell with explicit error action and output redirection
-        const psCommand = `Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${binDir.replace(/'/g, "''")}' -Force -ErrorAction Stop`;
-        console.log(`[sshifu-trust] Running: ${psCommand}`);
-        execSync(`powershell -Command "${psCommand}"`, { stdio: ['ignore', 'pipe', 'pipe'] });
-        console.log(`[sshifu-trust] Extraction completed, checking files...`);
-        const afterExtract = fs.readdirSync(binDir);
-        console.log(`[sshifu-trust] Files after extraction: ${afterExtract.join(', ')}`);
-      } catch (extractErr) {
-        console.error(`[sshifu-trust] Extraction failed: ${extractErr.message}`);
-        console.error(`[sshifu-trust] stderr: ${extractErr.stderr?.toString() || 'N/A'}`);
-        console.error(`[sshifu-trust] stdout: ${extractErr.stdout?.toString() || 'N/A'}`);
-        throw extractErr;
+      // Retry extraction to handle file lock issues on Windows
+      const maxRetries = 5;
+      let lastErr;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          // Small delay before each attempt to ensure file handle is released
+          if (attempt > 1) {
+            console.log(`[sshifu-trust] Retry attempt ${attempt}/${maxRetries}...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 500));
+          }
+          
+          // Use PowerShell with explicit error action and output redirection
+          const psCommand = `Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${binDir.replace(/'/g, "''")}' -Force -ErrorAction Stop`;
+          console.log(`[sshifu-trust] Running: ${psCommand}`);
+          execSync(`powershell -Command "${psCommand}"`, { stdio: ['ignore', 'pipe', 'pipe'] });
+          console.log(`[sshifu-trust] Extraction completed, checking files...`);
+          const afterExtract = fs.readdirSync(binDir);
+          console.log(`[sshifu-trust] Files after extraction: ${afterExtract.join(', ')}`);
+          lastErr = null;
+          break;
+        } catch (extractErr) {
+          lastErr = extractErr;
+          console.error(`[sshifu-trust] Extraction attempt ${attempt} failed: ${extractErr.message}`);
+          if (extractErr.message.includes('being used by another process')) {
+            console.log(`[sshifu-trust] File locked, will retry...`);
+            continue;
+          }
+          // Non-retryable error
+          break;
+        }
+      }
+      if (lastErr) {
+        console.error(`[sshifu-trust] All extraction attempts failed`);
+        console.error(`[sshifu-trust] stderr: ${lastErr.stderr?.toString() || 'N/A'}`);
+        console.error(`[sshifu-trust] stdout: ${lastErr.stdout?.toString() || 'N/A'}`);
+        throw lastErr;
       }
     } else {
       execSync(`tar -xzf "${archivePath}" -C "${binDir}"`, { stdio: 'ignore' });
