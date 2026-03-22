@@ -77,8 +77,10 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Clear npm cache
-        run: npm cache clean --force
+      - name: Clear npm and npx cache
+        run: |
+          npm cache clean --force
+          rm -rf ~/Library/Caches/npm/_npx
 
       - name: Test ${{ matrix.package }}
         run: npx -y ${{ matrix.package }} -v
@@ -102,8 +104,10 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Clear npm cache
-        run: npm cache clean --force
+      - name: Clear npm and npx cache
+        run: |
+          npm cache clean --force
+          Remove-Item -Recurse -Force $env:LOCALAPPDATA\npm-cache\_npx -ErrorAction SilentlyContinue
 
       - name: Test ${{ matrix.package }}
         run: npx -y ${{ matrix.package }} -v
