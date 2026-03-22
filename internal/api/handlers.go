@@ -14,7 +14,6 @@ import (
 	"github.com/azophy/sshifu/internal/oauth"
 	"github.com/azophy/sshifu/internal/session"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/oauth2"
 )
 
 // Handler manages HTTP request handling
@@ -174,9 +173,27 @@ func (h *Handler) OAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionID := r.URL.Query().Get("state")
-	if sessionID == "" {
+	state := r.URL.Query().Get("state")
+	if state == "" {
 		http.Error(w, "Missing state parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Decode provider name and session ID from state
+	// Format: provider_name:session_id
+	stateParts := strings.SplitN(state, ":", 2)
+	if len(stateParts) != 2 {
+		http.Error(w, "Invalid state parameter format", http.StatusBadRequest)
+		return
+	}
+
+	providerName := stateParts[0]
+	sessionID := stateParts[1]
+
+	// Get the specific provider
+	provider, exists := h.oauthProviders[providerName]
+	if !exists {
+		http.Error(w, "Unknown OAuth provider: "+providerName, http.StatusNotFound)
 		return
 	}
 
@@ -199,36 +216,27 @@ func (h *Handler) OAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Exchange code for token
+	// Exchange code for token using the correct provider
 	ctx := r.Context()
-	var token *oauth2.Token
-	var username string
-	var err error
-	var usedProvider oauth.Provider
-
-	// Try all providers until one succeeds
-	for _, provider := range h.oauthProviders {
-		token, err = provider.Exchange(ctx, code)
-		if err != nil {
-			continue // Try next provider
-		}
-
-		username, err = provider.GetUsername(ctx, token)
-		if err != nil {
-			continue
-		}
-
-		if err := provider.VerifyMembership(ctx, token, username); err != nil {
-			continue
-		}
-
-		usedProvider = provider
-		break
+	token, err := provider.Exchange(ctx, code)
+	if err != nil {
+		log.Printf("Failed to exchange code with provider %s: %v", providerName, err)
+		http.Error(w, "Failed to exchange authorization code", http.StatusInternalServerError)
+		return
 	}
 
-	if token == nil || usedProvider == nil {
-		log.Printf("All providers failed to exchange code or verify user: %v", err)
-		http.Error(w, "Failed to authenticate with any configured provider", http.StatusInternalServerError)
+	// Get username
+	username, err := provider.GetUsername(ctx, token)
+	if err != nil {
+		log.Printf("Failed to get username from provider %s: %v", providerName, err)
+		http.Error(w, "Failed to retrieve user information", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify membership
+	if err := provider.VerifyMembership(ctx, token, username); err != nil {
+		log.Printf("Membership verification failed with provider %s: %v", providerName, err)
+		http.Error(w, "Access denied: not a member of required organization", http.StatusForbidden)
 		return
 	}
 
@@ -286,8 +294,12 @@ func (h *Handler) OAuthInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect to OAuth provider
-	authURL := provider.AuthURL(sessionID)
+	// Encode provider name in state for callback identification
+	// Format: provider_name:session_id
+	state := providerName + ":" + sessionID
+
+	// Redirect to OAuth provider with encoded state
+	authURL := provider.AuthURL(state)
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
