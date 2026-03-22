@@ -290,7 +290,7 @@ auth:
 
 ## Multiple Providers
 
-Configure multiple OAuth providers:
+Configure multiple OAuth providers to give users choice:
 
 ```yaml
 auth:
@@ -299,16 +299,19 @@ auth:
       type: github
       client_id: YOUR_GITHUB_CLIENT_ID
       client_secret: YOUR_GITHUB_CLIENT_SECRET
-      allowed_org: company-a
-    
-    - name: github-personal
-      type: github
-      client_id: YOUR_OTHER_CLIENT_ID
-      client_secret: YOUR_OTHER_CLIENT_SECRET
-      allowed_org: company-b
+      allowed_org: company-main
+
+    - name: google
+      type: oidc
+      issuer: https://accounts.google.com
+      client_id: YOUR_GOOGLE_CLIENT_ID
+      client_secret: YOUR_GOOGLE_CLIENT_SECRET
+      principal_oauth_field_name: email
 ```
 
-> ⚠️ **Note:** Currently only the first provider is used. Multiple provider support is planned for future versions.
+Users will see all configured providers on the login page and can choose their preferred method.
+
+For detailed OAuth configuration instructions, see [OAuth Provider Configuration Guide](../guides/oauth-providers.md).
 
 ---
 

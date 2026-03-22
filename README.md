@@ -6,7 +6,7 @@
 
 **Sshifu** helps you log in to SSH with SSO.
 
-It issues short-lived **OpenSSH certificates** after users authenticate with an OAuth provider (currently **GitHub Organizations**), so you can stop distributing and cleaning up long-lived public keys.
+It issues short-lived **OpenSSH certificates** after users authenticate with an OAuth provider (currently **GitHub Organizations** or **OIDC**), so you can stop distributing and cleaning up long-lived public keys.
 
 ## Problem Statement
 
@@ -136,24 +136,27 @@ To configure OAuth authentication with GitHub, you need to create a GitHub OAuth
 
 > ⚠️ **Important**: The client secret is only shown once. Store it securely and never commit it to version control.
 
+For OIDC providers (Google, Okta, Auth0, etc.), see the [OAuth Provider Configuration Guide](docs/guides/oauth-providers.md).
+
 ## Authentication Flow
 
 ```mermaid
 sequenceDiagram
     participant User as User CLI (sshifu)
     participant Server as sshifu-server
-    participant GitHub as GitHub OAuth
+    participant Provider as OAuth Provider
     participant SSH as Target SSH Server
 
     User->>Server: POST /api/v1/login/start
     Server-->>User: session_id, login_url
     User->>User: Display login URL
     User->>Server: Open login URL in browser
-    Server->>GitHub: Redirect to GitHub OAuth
-    User->>GitHub: Authenticate
-    GitHub-->>Server: OAuth callback with code
-    Server->>GitHub: Verify org membership
-    GitHub-->>Server: User info
+    Note over Server: Shows all configured providers
+    User->>Provider: Select provider & authenticate
+    Provider-->>Server: OAuth callback with code
+    Server->>Provider: Exchange code for token
+    Provider-->>Server: User info
+    Server->>Server: Verify authorization
     User->>Server: GET /api/v1/login/status
     Server-->>User: status: approved, access_token
     User->>Server: POST /api/v1/sign/user
@@ -161,6 +164,8 @@ sequenceDiagram
     User->>SSH: ssh -o CertificateFile=<cert>
     Note over SSH: SSH connection established
 ```
+
+For detailed OAuth flow documentation, see [OAuth Provider Configuration Guide](docs/guides/oauth-providers.md).
 
 ## Configuration
 
