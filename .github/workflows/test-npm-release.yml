@@ -112,9 +112,15 @@ jobs:
           npm cache clean --force
           Remove-Item -Recurse -Force $env:LOCALAPPDATA\npm-cache\_npx -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force $env:LOCALAPPDATA\npm-cache\_logs -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force $env:LOCALAPPDATA\npm-cache\_cacache -ErrorAction SilentlyContinue
 
       - name: Install ${{ matrix.package }} with verbose output
-        run: npm install -g ${{ matrix.package }}@latest --verbose --force 2>&1 | Out-Host
+        run: |
+          # Force fresh install by specifying exact version from GitHub API
+          $version = (Invoke-RestMethod -Uri "https://api.github.com/repos/azophy/sshifu/releases/latest").tag_name.TrimStart('v')
+          Write-Host "Installing version: $version"
+          npm install -g ${{ matrix.package }}@$version --verbose 2>&1 | Out-Host
+        shell: pwsh
 
       - name: List installed package contents
         run: |
