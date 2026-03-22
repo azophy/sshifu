@@ -3,6 +3,17 @@ name: Test npm Release
 on:
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      npm_tag:
+        description: 'npm tag to use (e.g., "latest" or "test")'
+        required: false
+        default: 'latest'
+        type: string
+      version:
+        description: 'Specific version to test (optional)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -14,8 +25,8 @@ jobs:
     steps:
       - name: Wait for npm propagation
         run: |
-          echo "Waiting 60 seconds for npm packages to propagate..."
-          sleep 60
+          echo "Waiting 120 seconds for npm packages to propagate..."
+          sleep 120
 
   test-linux:
     name: Test Linux (npx)
@@ -33,7 +44,7 @@ jobs:
     steps:
       - name: Test ${{ matrix.package }}
         run: |
-          npx -y ${{ matrix.package }} -v
+          npx -y ${{ matrix.package }}@${{ inputs.npm_tag }} -v
 
   test-linux-alpine:
     name: Test Alpine Linux (podman)
@@ -56,7 +67,7 @@ jobs:
 
       - name: Test ${{ matrix.package }} in Alpine
         run: |
-          podman run --rm node:alpine npx -y ${{ matrix.package }} -v
+          podman run --rm node:alpine npx -y ${{ matrix.package }}@${{ inputs.npm_tag }} -v
 
   test-macos:
     name: Test macOS
@@ -83,7 +94,7 @@ jobs:
           rm -rf ~/Library/Caches/npm/_npx
 
       - name: Install ${{ matrix.package }} with verbose output
-        run: npm install -g ${{ matrix.package }}@latest --verbose
+        run: npm install -g ${{ matrix.package }}@${{ inputs.npm_tag }} --verbose
 
       - name: Test ${{ matrix.package }}
         run: ${{ matrix.cmd }}
@@ -116,10 +127,15 @@ jobs:
 
       - name: Install ${{ matrix.package }} with verbose output
         run: |
-          # Force fresh install by specifying exact version from GitHub API
-          $version = (Invoke-RestMethod -Uri "https://api.github.com/repos/azophy/sshifu/releases/latest").tag_name.TrimStart('v')
-          Write-Host "Installing version: $version"
-          npm install -g ${{ matrix.package }}@$version --verbose 2>&1 | Out-Host
+          $tag = "${{ inputs.npm_tag }}"
+          if ("${{ inputs.version }}" -ne "") {
+            $version = "${{ inputs.version }}"
+            Write-Host "Installing specific version: $version"
+            npm install -g ${{ matrix.package }}@$version --verbose 2>&1 | Out-Host
+          } else {
+            Write-Host "Installing with tag: $tag"
+            npm install -g ${{ matrix.package }}@$tag --verbose 2>&1 | Out-Host
+          }
         shell: pwsh
 
       - name: List installed package contents
@@ -149,12 +165,12 @@ jobs:
 
       - name: Test sshifu-server (${{ matrix.arch }})
         run: |
-          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu-server -v
+          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu-server@${{ inputs.npm_tag }} -v
 
       - name: Test sshifu (${{ matrix.arch }})
         run: |
-          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu -v
+          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu@${{ inputs.npm_tag }} -v
 
       - name: Test sshifu-trust (${{ matrix.arch }})
         run: |
-          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu-trust -v
+          docker run --rm --platform linux/${{ matrix.arch }} ${{ matrix.image }} npx -y sshifu-trust@${{ inputs.npm_tag }} -v

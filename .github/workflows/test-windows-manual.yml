@@ -1,0 +1,149 @@
+name: Manual Windows Test Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch/Tag/Commit to build from'
+        required: true
+        default: 'fix/windows-npm-install-test'
+      version:
+        description: 'Version to build (e.g., 0.7.8-test.1)'
+        required: true
+        default: '0.7.8-test.1'
+      npm_tag:
+        description: 'npm tag (use "test" to avoid polluting "latest")'
+        required: true
+        default: 'test'
+      publish_npm:
+        description: 'Publish to npm (requires NPM_TOKEN secret)'
+        required: true
+        type: boolean
+        default: true
+      create_release:
+        description: 'Create draft release with artifacts'
+        required: true
+        type: boolean
+        default: true
+      run_tests:
+        description: 'Run full test suite after npm publish'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build All Binaries
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build all binaries
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          bash scripts/ci-build.sh "$VERSION"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-binaries
+          path: dist/*.tar.gz
+          retention-days: 7
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist/*windows*.zip
+          retention-days: 7
+
+      - name: Set version output
+        id: version
+        run: echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+
+  create-test-release:
+    name: Create Test Release
+    needs: build
+    if: ${{ github.event.inputs.create-release == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-binaries'
+          path: dist/
+          merge-multiple: true
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: Test Release v${{ needs.build.outputs.version }}
+          draft: true
+          prerelease: true
+          files: dist/*
+          generate_release_notes: false
+          body: |
+            **TEST RELEASE - DO NOT USE IN PRODUCTION**
+            
+            Built from branch: `${{ github.event.inputs.ref }}`
+            
+            Purpose: Testing Windows npm install fix
+            
+            This release will be deleted after testing.
+
+  publish-npm:
+    name: Publish to npm (test tag)
+    needs: [build, create-test-release]
+    if: ${{ github.event.inputs.publish_npm == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Wait for release artifacts
+        run: |
+          echo "Waiting 30 seconds for release artifacts to be available..."
+          sleep 30
+
+      - name: Sync workspace versions
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          node scripts/sync-version.js "$VERSION"
+
+      - name: Publish workspace packages with test tag
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish --workspaces --access public --tag ${{ github.event.inputs.npm_tag }}
+
+  test-all:
+    name: Run Full Test Suite
+    needs: [build, publish-npm]
+    if: ${{ github.event.inputs.run_tests == 'true' && always() }}
+    uses: ./.github/workflows/test-npm-release.yml
+    with:
+      npm_tag: ${{ github.event.inputs.npm_tag }}
+      version: ${{ needs.build.outputs.version }}
