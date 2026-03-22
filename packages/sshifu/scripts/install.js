@@ -95,7 +95,12 @@ async function main() {
     const archiveBinName = `${PACKAGE_NAME}-${platform}${isWindows ? '.exe' : ''}`;
     const extractedPath = path.join(binDir, archiveBinName);
     if (isWindows) {
-      execSync(`powershell -Command "Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${binDir.replace(/'/g, "''")}' -Force"`, { stdio: 'ignore' });
+      try {
+        execSync(`powershell -Command "Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${binDir.replace(/'/g, "''")}' -Force"`, { stdio: 'pipe' });
+      } catch (extractErr) {
+        console.error(`[sshifu] Extraction failed: ${extractErr.message}`);
+        throw extractErr;
+      }
     } else {
       execSync(`tar -xzf "${archivePath}" -C "${binDir}"`, { stdio: 'ignore' });
     }
@@ -109,12 +114,35 @@ async function main() {
         fs.renameSync(extractedPath, binPath);
       } else {
         // Try to find the extracted file (in case of path issues)
+        console.log(`[sshifu] Binary not found at expected location, searching...`);
         const files = fs.readdirSync(binDir);
-        console.log(`[sshifu] Files in binDir: ${files.join(', ')}`);
-        const exeFile = files.find(f => f.endsWith('.exe') && f.startsWith(PACKAGE_NAME));
-        if (exeFile) {
-          console.log(`[sshifu] Found ${exeFile}, renaming to ${binName}`);
-          fs.renameSync(path.join(binDir, exeFile), binPath);
+        console.log(`[sshifu] Files in binDir (top level): ${files.join(', ')}`);
+        
+        // Look for .exe file in binDir or any subdirectory
+        let foundFile = null;
+        for (const file of files) {
+          const filePath = path.join(binDir, file);
+          const stat = fs.statSync(filePath);
+          if (stat.isDirectory()) {
+            // Check subdirectory
+            const subFiles = fs.readdirSync(filePath);
+            console.log(`[sshifu] Files in ${file}/: ${subFiles.join(', ')}`);
+            const exeInSubdir = subFiles.find(f => f.endsWith('.exe') && f.startsWith(PACKAGE_NAME));
+            if (exeInSubdir) {
+              foundFile = path.join(filePath, exeInSubdir);
+              break;
+            }
+          } else if (file.endsWith('.exe') && file.startsWith(PACKAGE_NAME)) {
+            foundFile = filePath;
+            break;
+          }
+        }
+        
+        if (foundFile) {
+          console.log(`[sshifu] Found ${foundFile}, renaming to ${binName}`);
+          fs.renameSync(foundFile, binPath);
+        } else {
+          throw new Error(`Could not find binary in ${binDir}`);
         }
       }
     }
