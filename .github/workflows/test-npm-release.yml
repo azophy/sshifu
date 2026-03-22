@@ -82,8 +82,11 @@ jobs:
           npm cache clean --force
           rm -rf ~/Library/Caches/npm/_npx
 
+      - name: Install ${{ matrix.package }} with verbose output
+        run: npm install -g ${{ matrix.package }}@latest --verbose
+
       - name: Test ${{ matrix.package }}
-        run: npx -y ${{ matrix.package }} -v
+        run: ${{ matrix.cmd }}
 
   test-windows:
     name: Test Windows
@@ -109,8 +112,11 @@ jobs:
           npm cache clean --force
           Remove-Item -Recurse -Force $env:LOCALAPPDATA\npm-cache\_npx -ErrorAction SilentlyContinue
 
+      - name: Install ${{ matrix.package }} with verbose output
+        run: npm install -g ${{ matrix.package }}@latest --verbose 2>&1 | Out-Host
+
       - name: Test ${{ matrix.package }}
-        run: npx -y ${{ matrix.package }} -v
+        run: ${{ matrix.cmd }}
 
   test-arm-emulated:
     name: Test ARM (QEMU)
