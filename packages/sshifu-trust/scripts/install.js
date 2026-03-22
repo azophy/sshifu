@@ -95,12 +95,15 @@ async function main() {
     const archiveBinName = `${PACKAGE_NAME}-${platform}${isWindows ? '.exe' : ''}`;
     const extractedPath = path.join(binDir, archiveBinName);
     if (isWindows) {
-      // On Windows, extract to temp directory first to avoid file lock issues
+      // On Windows, copy zip to temp location first to avoid file lock issues
+      const tempZip = path.join(binDir, 'temp_' + Date.now() + '.zip');
+      fs.copyFileSync(archivePath, tempZip);
+      
       const tempDir = path.join(binDir, 'tmp_extract_' + Date.now());
       fs.mkdirSync(tempDir, { recursive: true });
       
       try {
-        const psCommand = `Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${tempDir.replace(/'/g, "''")}' -Force -ErrorAction Stop`;
+        const psCommand = `Expand-Archive -Path '${tempZip.replace(/'/g, "''")}' -DestinationPath '${tempDir.replace(/'/g, "''")}' -Force -ErrorAction Stop`;
         console.log(`[sshifu-trust] Running: ${psCommand}`);
         execSync(`powershell -Command "${psCommand}"`, { stdio: ['ignore', 'pipe', 'pipe'] });
         
@@ -116,11 +119,16 @@ async function main() {
         // Move to final location
         const tempBinPath = path.join(tempDir, extractedBin);
         fs.renameSync(tempBinPath, binPath);
+        
+        // Cleanup
+        fs.unlinkSync(tempZip);
         fs.rmSync(tempDir, { recursive: true, force: true });
+        fs.unlinkSync(archivePath);
         
         console.log(`[sshifu-trust] Binary installed successfully!`);
       } catch (extractErr) {
-        // Cleanup temp dir on error
+        // Cleanup temp files on error
+        try { fs.unlinkSync(tempZip); } catch (e) {}
         try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) {}
         console.error(`[sshifu-trust] Extraction failed: ${extractErr.message}`);
         console.error(`[sshifu-trust] stderr: ${extractErr.stderr?.toString() || 'N/A'}`);
