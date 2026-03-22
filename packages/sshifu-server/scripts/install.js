@@ -96,9 +96,17 @@ async function main() {
     const extractedPath = path.join(binDir, archiveBinName);
     if (isWindows) {
       try {
-        execSync(`powershell -Command "Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${binDir.replace(/'/g, "''")}' -Force"`, { stdio: 'pipe' });
+        // Use PowerShell with explicit error action and output redirection
+        const psCommand = `Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${binDir.replace(/'/g, "''")}' -Force -ErrorAction Stop`;
+        console.log(`[sshifu-server] Running: ${psCommand}`);
+        execSync(`powershell -Command "${psCommand}"`, { stdio: ['ignore', 'pipe', 'pipe'] });
+        console.log(`[sshifu-server] Extraction completed, checking files...`);
+        const afterExtract = fs.readdirSync(binDir);
+        console.log(`[sshifu-server] Files after extraction: ${afterExtract.join(', ')}`);
       } catch (extractErr) {
         console.error(`[sshifu-server] Extraction failed: ${extractErr.message}`);
+        console.error(`[sshifu-server] stderr: ${extractErr.stderr?.toString() || 'N/A'}`);
+        console.error(`[sshifu-server] stdout: ${extractErr.stdout?.toString() || 'N/A'}`);
         throw extractErr;
       }
     } else {
