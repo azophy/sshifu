@@ -107,13 +107,21 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Clear npm and npx cache
+      - name: Clear all npm caches
         run: |
           npm cache clean --force
           Remove-Item -Recurse -Force $env:LOCALAPPDATA\npm-cache\_npx -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force $env:LOCALAPPDATA\npm-cache\_logs -ErrorAction SilentlyContinue
 
       - name: Install ${{ matrix.package }} with verbose output
-        run: npm install -g ${{ matrix.package }}@latest --verbose 2>&1 | Out-Host
+        run: npm install -g ${{ matrix.package }}@latest --verbose --force 2>&1 | Out-Host
+
+      - name: List installed package contents
+        run: |
+          $pkgPath = npm root -g | Join-Path -ChildPath ${{ matrix.package }}
+          Write-Host "Package path: $pkgPath"
+          Get-ChildItem -Recurse $pkgPath | Select-Object FullName
+        shell: pwsh
 
       - name: Test ${{ matrix.package }}
         run: ${{ matrix.cmd }}
