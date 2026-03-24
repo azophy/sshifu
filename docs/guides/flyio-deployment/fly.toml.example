@@ -24,3 +24,8 @@ primary_region = 'sjc'
   memory = '512MB'
   cpu_kind = 'shared'
   cpus = 1
+
+# Optional: Uncomment to persist CA keys with volume
+# [mounts]
+#   source = "sshifu_data"
+#   destination = "/app/data"

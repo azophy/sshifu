@@ -11,22 +11,9 @@ WORKDIR /app
 # Install sshifu-server using the official installer script
 RUN curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/scripts/install.sh | INSTALL_APP=sshifu-server bash
 
-# Copy configuration files
-COPY config.fly.yml /app/config.yml
-COPY ca.pub /app/ca.pub
-
-# Copy and set up entrypoint script
+# Copy entrypoint script (runs wizard on first run)
 COPY fly-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Create non-root user
-RUN addgroup -g 1000 sshifu && \
-    adduser -D -u 1000 -G sshifu sshifu
-
-# Set ownership
-RUN chown -R sshifu:sshifu /app
-
-USER sshifu
 
 EXPOSE 8080
 

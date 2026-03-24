@@ -1,39 +1,41 @@
 # SSHifu Fly.io Deployment Assets
 
-This folder contains all files needed to deploy sshifu-server on Fly.io.
+This folder contains all files needed to deploy sshifu-server on Fly.io using the interactive wizard.
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `Dockerfile.fly` | Multi-stage Docker build for sshifu-server |
+| `Dockerfile.fly` | Docker build using installer script |
 | `fly.toml.example` | Fly.io app configuration template |
-| `config.fly.yml` | sshifu-server config with env var placeholders |
-| `fly-entrypoint.sh` | Runtime script to decode CA key from secrets |
+| `fly-entrypoint.sh` | Entrypoint that runs wizard on first run |
+| `README.md` | This file |
 
 ## Quick Setup
 
 ```bash
 # Copy deployment files to project root
-cp docs/guides/flyio-deployment/Dockerfile.fly .
+cp docs/guides/flyio-deployment/Dockerfile.fly Dockerfile
 cp docs/guides/flyio-deployment/fly.toml.example fly.toml
-cp docs/guides/flyio-deployment/config.fly.yml config.fly.yml
-mkdir -p scripts
-cp docs/guides/flyio-deployment/fly-entrypoint.sh scripts/
-chmod +x scripts/fly-entrypoint.sh
-
-# Copy CA public key
-cp ca.pub ca.pub
+cp docs/guides/flyio-deployment/fly-entrypoint.sh fly-entrypoint.sh
+chmod +x fly-entrypoint.sh
 ```
 
 ## Deployment Steps
 
-1. Generate CA keys: `ssh-keygen -t ed25519 -f ca -N ""`
-2. Encode CA key: `CA_PRIVATE_KEY_B64=$(base64 -w 0 ca)`
-3. Create Fly.io app: `flyctl apps create sshifu-auth`
-4. Set secrets (see full guide in `docs/guides/flyio-deployment.md`)
-5. Deploy: `flyctl deploy`
+1. Create Fly.io app: `flyctl apps create sshifu-auth`
+2. Set OAuth secrets: `flyctl secrets set GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... GITHUB_ALLOWED_ORG=...`
+3. Deploy: `flyctl deploy`
+4. Run wizard: Access via `flyctl ssh console` on first run
+5. (Optional) Create volume to persist CA keys
+
+## Key Features
+
+- **Wizard-based setup**: Interactive configuration on first run
+- **No manual CA key generation**: Wizard generates keys automatically
+- **OAuth via secrets**: Credentials stored securely in Fly.io secrets
+- **Optional persistence**: Use Fly.io volume to persist CA keys across restarts
 
 ## Full Documentation
 
-See [flyio-deployment.md](../flyio-deployment.md) for the complete deployment tutorial.
+See [docs/guides/flyio-deployment.md](../flyio-deployment.md) for the complete deployment tutorial.
