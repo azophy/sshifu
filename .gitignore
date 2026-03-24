@@ -55,6 +55,3 @@ temp/
 
 # config file
 config.yml
-
-# Generated files
-embed/login.html
