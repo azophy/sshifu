@@ -1,0 +1,51 @@
+# Dockerfile for deploying sshifu-server on Fly.io
+# See docs/guides/flyio-deployment.md for usage instructions
+
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /build
+
+# Install git for fetching dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the server
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sshifu-server ./cmd/sshifu-server
+
+# Final stage
+FROM alpine:3.19
+
+# Install OpenSSH client (for ssh-keygen) and ca-certificates
+RUN apk add --no-cache openssh-client ca-certificates bash
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/sshifu-server /app/sshifu-server
+
+# Copy configuration files
+COPY config.fly.yml /app/config.yml
+COPY ca.pub /app/ca.pub
+
+# Copy and set up entrypoint script
+COPY scripts/fly-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Create non-root user
+RUN addgroup -g 1000 sshifu && \
+    adduser -D -u 1000 -G sshifu sshifu
+
+# Set ownership
+RUN chown -R sshifu:sshifu /app
+
+USER sshifu
+
+EXPOSE 8080
+
+ENTRYPOINT ["/entrypoint.sh"]

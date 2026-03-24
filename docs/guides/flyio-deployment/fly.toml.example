@@ -1,0 +1,26 @@
+# Fly.io configuration for sshifu-server
+# See docs/guides/flyio-deployment.md for deployment instructions
+
+app = 'sshifu-auth'
+primary_region = 'sjc'
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory = '512MB'
+  cpu_kind = 'shared'
+  cpus = 1
