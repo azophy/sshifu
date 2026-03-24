@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/azophy/sshifu/internal/cert"
 	"github.com/azophy/sshifu/internal/oauth"
 	"github.com/azophy/sshifu/internal/session"
+	"github.com/azophy/sshifu/embed"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/oauth2"
 )
@@ -292,18 +292,15 @@ func TestCAPublicKey(t *testing.T) {
 }
 
 func TestLoginTemplateExists(t *testing.T) {
-	// Check if login.html exists (try multiple paths)
+	// Check if login.html can be loaded from embedded content
 	templateExists := false
-	if _, err := os.Stat("web/login.html"); err == nil {
-		templateExists = true
-	} else if _, err := os.Stat("../web/login.html"); err == nil {
-		templateExists = true
-	} else if _, err := os.Stat("../../web/login.html"); err == nil {
+	tmpl, err := embed.LoadLoginTemplate()
+	if err == nil && tmpl != nil {
 		templateExists = true
 	}
 
 	if !templateExists {
-		t.Skip("web/login.html not found, skipping template test")
+		t.Skip("login.html template not found in embedded FS, skipping template test")
 	}
 
 	store := session.NewStore(15 * time.Minute)

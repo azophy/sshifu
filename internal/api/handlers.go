@@ -13,6 +13,7 @@ import (
 	"github.com/azophy/sshifu/internal/cert"
 	"github.com/azophy/sshifu/internal/oauth"
 	"github.com/azophy/sshifu/internal/session"
+	"github.com/azophy/sshifu/embed"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -34,20 +35,8 @@ type Config struct {
 
 // NewHandler creates a new API handler
 func NewHandler(store *session.Store, providers map[string]oauth.Provider, caSigner ssh.Signer, cfg *Config, publicURL string) (*Handler, error) {
-	// Try multiple paths for the template (handles different working directories)
-	var tmpl *template.Template
-	var err error
-
-	// Try current directory first (for running from project root)
-	tmpl, err = template.ParseFiles("web/login.html")
-	if err != nil {
-		// Try parent directory (for running from cmd/sshifu-server)
-		tmpl, err = template.ParseFiles("../web/login.html")
-	}
-	if err != nil {
-		// Try two levels up (for running tests from internal/api)
-		tmpl, err = template.ParseFiles("../../web/login.html")
-	}
+	// Load template from embedded FS
+	tmpl, err := embed.LoadLoginTemplate()
 	if err != nil {
 		return nil, err
 	}
