@@ -17,6 +17,7 @@ Welcome to the Sshifu documentation. Sshifu is a lightweight SSH authentication 
 |----------|-------------|
 | [Server Setup Guide](guides/server-setup.md) | Deploying and configuring sshifu-server |
 | [Fly.io Deployment](guides/flyio-deployment.md) | Deploy to Fly.io with managed secrets |
+| [systemd Service Setup](guides/systemd-setup.md) | Run as Linux systemd service |
 | [Configuration Reference](reference/configuration.md) | Complete configuration options |
 
 ### For Developers
