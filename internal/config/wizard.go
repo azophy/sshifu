@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -72,40 +71,125 @@ func RunWizard(configPath string) (*WizardResult, error) {
 		fmt.Println("✓ CA keypair already exists")
 	}
 
-	// GitHub OAuth configuration
+	// Choose OAuth provider type
 	fmt.Println()
-	fmt.Println("GitHub OAuth Configuration:")
-	fmt.Println("You'll need to create a GitHub OAuth app at: https://github.com/settings/developers")
+	fmt.Println("Select OAuth Provider Type:")
+	fmt.Println("  1) GitHub (GitHub organization-based authentication)")
+	fmt.Println("  2) Generic OIDC (OpenID Connect compatible providers)")
 	fmt.Println()
-
-	fmt.Print("GitHub Client ID: ")
-	clientID, err := reader.ReadString('\n')
+	fmt.Print("Choose provider type [1-2] (default: 1): ")
+	providerChoice, err := reader.ReadString('\n')
 	if err != nil {
-		return nil, fmt.Errorf("failed to read client ID: %w", err)
+		return nil, fmt.Errorf("failed to read provider choice: %w", err)
 	}
-	clientID = strings.TrimSpace(clientID)
-	if clientID == "" {
-		return nil, fmt.Errorf("client ID cannot be empty")
-	}
-
-	fmt.Print("GitHub Client Secret: ")
-	clientSecret, err := reader.ReadString('\n')
-	if err != nil {
-		return nil, fmt.Errorf("failed to read client secret: %w", err)
-	}
-	clientSecret = strings.TrimSpace(clientSecret)
-	if clientSecret == "" {
-		return nil, fmt.Errorf("client secret cannot be empty")
+	providerChoice = strings.TrimSpace(providerChoice)
+	if providerChoice == "" {
+		providerChoice = "1"
 	}
 
-	fmt.Print("Allowed GitHub Organization: ")
-	allowedOrg, err := reader.ReadString('\n')
-	if err != nil {
-		return nil, fmt.Errorf("failed to read allowed org: %w", err)
-	}
-	allowedOrg = strings.TrimSpace(allowedOrg)
-	if allowedOrg == "" {
-		return nil, fmt.Errorf("allowed organization cannot be empty")
+	var primaryProvider Provider
+	var secondaryProviderType string
+
+	if providerChoice == "2" || providerChoice == "oidc" {
+		// OIDC configuration
+		fmt.Println()
+		fmt.Println("Generic OIDC Configuration:")
+		fmt.Println()
+
+		fmt.Print("OIDC Issuer URL (e.g., https://accounts.google.com): ")
+		issuer, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("failed to read issuer URL: %w", err)
+		}
+		issuer = strings.TrimSpace(issuer)
+		if issuer == "" {
+			return nil, fmt.Errorf("issuer URL cannot be empty")
+		}
+
+		fmt.Print("OIDC Client ID: ")
+		clientID, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("failed to read client ID: %w", err)
+		}
+		clientID = strings.TrimSpace(clientID)
+		if clientID == "" {
+			return nil, fmt.Errorf("client ID cannot be empty")
+		}
+
+		fmt.Print("OIDC Client Secret: ")
+		clientSecret, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("failed to read client secret: %w", err)
+		}
+		clientSecret = strings.TrimSpace(clientSecret)
+		if clientSecret == "" {
+			return nil, fmt.Errorf("client secret cannot be empty")
+		}
+
+		fmt.Print("Principal OAuth Field Name (e.g., preferred_username, email): ")
+		principalField, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("failed to read principal field name: %w", err)
+		}
+		principalField = strings.TrimSpace(principalField)
+		if principalField == "" {
+			principalField = "preferred_username"
+		}
+
+		primaryProvider = Provider{
+			Name:        "oidc",
+			Type:        "oidc",
+			ClientID:    clientID,
+			ClientSecret: clientSecret,
+			Issuer:      issuer,
+			PrincipalOAuthFieldName: principalField,
+		}
+		secondaryProviderType = "github"
+	} else {
+		// GitHub OAuth configuration (default)
+		fmt.Println()
+		fmt.Println("GitHub OAuth Configuration:")
+		fmt.Println("You'll need to create a GitHub OAuth app at: https://github.com/settings/developers")
+		fmt.Println()
+
+		fmt.Print("GitHub Client ID: ")
+		clientID, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("failed to read client ID: %w", err)
+		}
+		clientID = strings.TrimSpace(clientID)
+		if clientID == "" {
+			return nil, fmt.Errorf("client ID cannot be empty")
+		}
+
+		fmt.Print("GitHub Client Secret: ")
+		clientSecret, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("failed to read client secret: %w", err)
+		}
+		clientSecret = strings.TrimSpace(clientSecret)
+		if clientSecret == "" {
+			return nil, fmt.Errorf("client secret cannot be empty")
+		}
+
+		fmt.Print("Allowed GitHub Organization: ")
+		allowedOrg, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("failed to read allowed org: %w", err)
+		}
+		allowedOrg = strings.TrimSpace(allowedOrg)
+		if allowedOrg == "" {
+			return nil, fmt.Errorf("allowed organization cannot be empty")
+		}
+
+		primaryProvider = Provider{
+			Name:       "github",
+			Type:       "github",
+			ClientID:   clientID,
+			ClientSecret: clientSecret,
+			AllowedOrg: allowedOrg,
+		}
+		secondaryProviderType = "oidc"
 	}
 
 	// Create configuration
@@ -119,25 +203,10 @@ func RunWizard(configPath string) (*WizardResult, error) {
 		"permit-pty":             true,
 		"permit-port-forwarding": true,
 	}
-	cfg.Auth.Providers = []Provider{
-		{
-			Name:       "github",
-			Type:       "github",
-			ClientID:   clientID,
-			ClientSecret: clientSecret,
-			AllowedOrg: allowedOrg,
-		},
-	}
+	cfg.Auth.Providers = []Provider{primaryProvider}
 
-	// Save configuration
-	configDir := filepath.Dir(configPath)
-	if configDir != "" && configDir != "." {
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create config directory: %w", err)
-		}
-	}
-
-	if err := Save(cfg, configPath); err != nil {
+	// Save configuration with commented alternative provider
+	if err := SaveWithCommentedAlternative(cfg, configPath, secondaryProviderType); err != nil {
 		return nil, fmt.Errorf("failed to save config: %w", err)
 	}
 
@@ -162,6 +231,84 @@ func Save(cfg *Config, path string) error {
 	}
 
 	if err := os.WriteFile(path, data, 0600); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
+
+// SaveWithCommentedAlternative saves the configuration with an alternative provider as commented section
+func SaveWithCommentedAlternative(cfg *Config, path string, alternativeType string) error {
+	var sb strings.Builder
+
+	// Write header
+	sb.WriteString("# Sshifu Server Configuration\n")
+	sb.WriteString("# Copy this file to config.yml and fill in your values\n\n")
+
+	// Server section
+	sb.WriteString("server:\n")
+	sb.WriteString(fmt.Sprintf("  listen: %q\n", cfg.Server.Listen))
+	sb.WriteString(fmt.Sprintf("  public_url: %s\n", cfg.Server.PublicURL))
+	sb.WriteString("\n")
+
+	// CA section
+	sb.WriteString("ca:\n")
+	sb.WriteString(fmt.Sprintf("  private_key: %s\n", cfg.CA.PrivateKey))
+	sb.WriteString(fmt.Sprintf("  public_key: %s\n", cfg.CA.PublicKey))
+	sb.WriteString("\n")
+
+	// Cert section
+	sb.WriteString("cert:\n")
+	sb.WriteString(fmt.Sprintf("  ttl: %s\n", cfg.Cert.TTL))
+	sb.WriteString("  extensions:\n")
+	for k, v := range cfg.Cert.Extensions {
+		sb.WriteString(fmt.Sprintf("    %s: %v\n", k, v))
+	}
+	sb.WriteString("\n")
+
+	// Auth section with providers
+	sb.WriteString("auth:\n")
+	sb.WriteString("  providers:\n")
+
+	// Write active provider
+	if len(cfg.Auth.Providers) > 0 {
+		p := cfg.Auth.Providers[0]
+		sb.WriteString("    - name: " + p.Name + "\n")
+		sb.WriteString("      type: " + p.Type + "\n")
+		sb.WriteString("      client_id: " + p.ClientID + "\n")
+		sb.WriteString("      client_secret: " + p.ClientSecret + "\n")
+		if p.Type == "github" && p.AllowedOrg != "" {
+			sb.WriteString("      allowed_org: " + p.AllowedOrg + "\n")
+		}
+		if p.Type == "oidc" {
+			sb.WriteString("      issuer: " + p.Issuer + "\n")
+			if p.PrincipalOAuthFieldName != "" {
+				sb.WriteString("      principal_oauth_field_name: " + p.PrincipalOAuthFieldName + "\n")
+			}
+		}
+	}
+
+	// Write commented alternative provider
+	sb.WriteString("\n")
+	if alternativeType == "github" {
+		sb.WriteString("    # Optional: GitHub provider\n")
+		sb.WriteString("    # - name: github\n")
+		sb.WriteString("    #   type: github\n")
+		sb.WriteString("    #   client_id: YOUR_GITHUB_CLIENT_ID\n")
+		sb.WriteString("    #   client_secret: YOUR_GITHUB_CLIENT_SECRET\n")
+		sb.WriteString("    #   allowed_org: your-github-org\n")
+	} else if alternativeType == "oidc" {
+		sb.WriteString("    # Optional: OIDC provider\n")
+		sb.WriteString("    # - name: oidc\n")
+		sb.WriteString("    #   type: oidc\n")
+		sb.WriteString("    #   issuer: https://example.com\n")
+		sb.WriteString("    #   client_id: YOUR_OIDC_CLIENT_ID\n")
+		sb.WriteString("    #   client_secret: YOUR_OIDC_CLIENT_SECRET\n")
+		sb.WriteString("    #   principal_oauth_field_name: preferred_username\n")
+	}
+
+	// Write file
+	if err := os.WriteFile(path, []byte(sb.String()), 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 

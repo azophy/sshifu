@@ -26,9 +26,9 @@ auth:
       allowed_org: your-github-org
 
     # Optional: OIDC provider
-    - name: oidc
-      type: oidc
-      issuer: https://example.com
-      client_id: YOUR_OIDC_CLIENT_ID
-      client_secret: YOUR_OIDC_CLIENT_SECRET
-      principal_oauth_field_name: preferred_username
+    # - name: oidc
+    #   type: oidc
+    #   issuer: https://example.com
+    #   client_id: YOUR_OIDC_CLIENT_ID
+    #   client_secret: YOUR_OIDC_CLIENT_SECRET
+    #   principal_oauth_field_name: preferred_username
