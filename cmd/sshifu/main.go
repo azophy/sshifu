@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/azophy/sshifu/internal/api"
@@ -176,6 +178,19 @@ func performLogin(serverURL string) (string, error) {
 
 	fmt.Printf("\nPlease open this URL in your browser to authenticate:\n")
 	fmt.Printf("  %s\n\n", loginURL)
+
+	// Ask if user wants to open the browser automatically
+	fmt.Print("Open this URL in your browser? [Y/n]: ")
+	var response string
+	fmt.Scanln(&response)
+	response = strings.ToLower(strings.TrimSpace(response))
+	
+	if response == "" || response == "y" || response == "yes" {
+		if err := openBrowser(loginURL); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to open browser: %v\n", err)
+		}
+	}
+
 	fmt.Println("Waiting for authentication...")
 
 	// Step 2: Poll for status
@@ -392,4 +407,18 @@ func joinURL(base, path string) string {
 		}
 	}
 	return u.ResolveReference(&url.URL{Path: path}).String()
+}
+
+// openBrowser opens the default web browser to the given URL
+func openBrowser(url string) error {
+	var cmd string
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "cmd"
+	case "darwin":
+		cmd = "open"
+	default: // linux
+		cmd = "xdg-open"
+	}
+	return exec.Command(cmd, url).Start()
 }
