@@ -35,9 +35,6 @@ detailed flow see [Authentication Flow](#authentication-flow) Section below
 ## Quick Start
 
 ```bash
-# Expose your server publicly (here we're using localhost.run for testing)
-ssh -R 80:localhost:8080 nokey@localhost.run
-
 # Prepare GitHub OAuth credentials & note the localhost.run URL from above.
 # In another terminal, start the sshifu server and follow the wizard.
 npx sshifu-server
@@ -48,6 +45,9 @@ sudo npx sshifu-trust <localhost.run address>
 # From another machine, connect to the SSH server
 npx sshifu <localhost.run address> <ssh server address>
 ```
+
+## Demo 
+https://www.loom.com/share/ee01e81eb56e49e8b657482da170e802
 
 ## Components
 
