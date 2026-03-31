@@ -57,6 +57,14 @@ https://www.loom.com/share/ee01e81eb56e49e8b657482da170e802
 | `sshifu-server` | Web server acting as OAuth gateway and SSH Certificate Authority |
 | `sshifu-trust` | Server-side CLI to configure SSH servers to trust the Sshifu CA |
 
+**Note:** For `sshifu-trust`, a lightweight bash script version is available (recommended for target servers without Node.js). Run it directly with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/cmd/sshifu-trust/sshifu-trust.sh | SSHIFU_SERVER=auth.example.com sudo bash
+```
+
+See [Setting Up Target Servers](docs/guides/server-setup.md) for details.
+
 ## Installation Options
 
 #### Option 1: Install Globally via npm

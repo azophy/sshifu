@@ -159,13 +159,56 @@ The server automatically loads `config.yml` from the current directory.
 
 ## Setting Up Target Servers
 
-### Step 1: Copy sshifu-trust to Target Server
+### Option 1: Using the Bash Script (Recommended)
+
+The bash script version requires no dependencies and works on any Linux server with `bash`, `curl`, and standard utilities.
+
+#### Quick One-Liner
+
+Run directly on the target server (requires sudo):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/cmd/sshifu-trust/sshifu-trust.sh | sudo bash -s -- auth.example.com
+```
+
+#### Step-by-Step
+
+SSH into the target server:
+
+```bash
+ssh user@target-server
+```
+
+Download and run the script:
+
+```bash
+# Download
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/cmd/sshifu-trust/sshifu-trust.sh -o /tmp/sshifu-trust.sh
+
+# Make executable and run
+chmod +x /tmp/sshifu-trust.sh
+sudo /tmp/sshifu-trust.sh auth.example.com
+```
+
+#### Alternative Methods
+
+```bash
+# Using environment variable
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/cmd/sshifu-trust/sshifu-trust.sh | SSHIFU_SERVER=auth.example.com sudo bash
+
+# Interactive mode (will prompt for server)
+curl -fsSL https://raw.githubusercontent.com/azophy/sshifu/main/cmd/sshifu-trust/sshifu-trust.sh | sudo bash
+```
+
+### Option 2: Using the Go Binary
+
+#### Step 1: Copy sshifu-trust to Target Server
 
 ```bash
 scp sshifu-trust user@target-server:/tmp/
 ```
 
-### Step 2: Run sshifu-trust
+#### Step 2: Run sshifu-trust
 
 SSH into the target server:
 
@@ -179,7 +222,9 @@ Run the trust setup (requires sudo):
 sudo /tmp/sshifu-trust auth.example.com
 ```
 
-This will:
+### What It Does
+
+Both methods will:
 
 1. Download the CA public key
 2. Install it to `/etc/ssh/sshifu_ca.pub`
